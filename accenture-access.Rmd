@@ -425,8 +425,8 @@ slot_util <- slot_view_tbl %>%
   summarise(AVAILABLE_MINS= sum(AVAILABLE_MINS, na.rm = T),
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
-  mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
-  filter(sched_util > 0.3 & sched_util <= 1.5) %>%
+  # mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
+  # filter(sched_util > 0.3 & sched_util <= 1.5) %>%
   collect() %>%
   left_join(clarity_ser) %>%
   left_join(clarity_ser_2)
@@ -1382,7 +1382,8 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 
 # Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
 *Report run date: `r report_run_date`*<br/>
-*Template utilization filtered to exclude provider utilization <30% & >150%*<br/>
+<!-- *Template utilization filtered to exclude provider utilization <30% & >150%*<br/> -->
+*No filtering on template utilization data*<br/>
 ______________________________________________________________________________________________________________________________
 <br/>
 <br/>
