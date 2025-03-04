@@ -425,8 +425,8 @@ slot_util <- slot_view_tbl %>%
   summarise(AVAILABLE_MINS= sum(AVAILABLE_MINS, na.rm = T),
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
-  # mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
-  # filter(sched_util > 0.1 & sched_util <= 1.5) %>%
+  mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
+  filter(sched_util > 0.1 & sched_util <= 1.5) %>%
   collect() %>%
   left_join(clarity_ser) %>%
   left_join(clarity_ser_2)
@@ -440,14 +440,10 @@ slot_util_mshs_baseline <- slot_util %>%
   filter(PROV_TYPE == "Physician") %>%
   group_by(slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
-            avail_hours_adj = sum(AVAILABLE_MINS_ADJ, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
-  mutate() %>%
   mutate(sched_util = sched_hours/avail_hours,
-         prov_util = arrived_hours/avail_hours,
-         sched_util_adj = sched_hours/avail_hours_adj,
-         prov_util_adj = arrived_hours/avail_hours_adj) %>%
+         prov_util = arrived_hours/avail_hours) %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
 
@@ -458,13 +454,10 @@ slot_util_mshs_ytd <- slot_util %>%
   filter(PROV_TYPE == "Physician") %>%
   group_by(slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
-            avail_hours_adj = sum(AVAILABLE_MINS_ADJ, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
   mutate(sched_util = sched_hours/avail_hours,
-         prov_util = arrived_hours/avail_hours,
-         sched_util_adj = sched_hours/avail_hours_adj,
-         prov_util_adj = arrived_hours/avail_hours_adj) %>%
+         prov_util = arrived_hours/avail_hours) %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
 
@@ -474,13 +467,10 @@ slot_util_dep <- slot_util %>%
   filter(PROV_TYPE == "Physician") %>%
   group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
-            avail_hours_adj = sum(AVAILABLE_MINS_ADJ, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
   mutate(sched_util = sched_hours/avail_hours,
-         prov_util = arrived_hours/avail_hours,
-         sched_util_adj = sched_hours/avail_hours_adj,
-         prov_util_adj = arrived_hours/avail_hours_adj) %>%
+         prov_util = arrived_hours/avail_hours) %>%
   rename("SITE" = CAMPUS,
          "DEPT_SPECIALTY_NAME" = CAMPUS_SPECIALTY,
          "DEPARTMENT_NAME" = DEPARTMENT,
