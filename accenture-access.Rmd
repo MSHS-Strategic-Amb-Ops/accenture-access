@@ -1498,7 +1498,7 @@ reactable(
         })
         return (totalarrived_hours_prior_year) / (totalavail_hours_prior_year) || '-'
       }"),
-      format = colFormat(percent = TRUE, digits = 0)
+      format = colFormat(percent = TRUE, digits = 1)
     ),
 
     prov_util= colDef(
@@ -1515,7 +1515,7 @@ reactable(
         })
         return (totalarrived_hours) / (totalavail_hours) || '-'
       }"),
-      format = colFormat(percent = TRUE, digits = 0)
+      format = colFormat(percent = TRUE, digits = 1)
     ),
 
     prov_util_var_baseline = colDef(
@@ -1547,7 +1547,7 @@ reactable(
         }
         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
       }"),
-      format = colFormat(percent = TRUE, digits = 0)
+      format = colFormat(percent = TRUE, digits = 1)
     ),
 
      prov_util_actualized_budget = colDef(
