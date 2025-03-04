@@ -374,8 +374,8 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 ```{r Report Variables, echo = FALSE, warning = FALSE, message = FALSE}
 
 report_run_date <- Sys.Date()
-date_start <- format(Sys.Date(), "%Y-%m-%d")
-# date_start <- paste0(format(Sys.Date(), "%Y-%m"),"-01")
+# date_start <- format(Sys.Date(), "%Y-%m-%d")
+date_start <- paste0(format(as.Date("2025-02-01"), "%Y-%m"),"-01")
 
 current_year <- format(report_run_date, "%Y")
 prior_year <- as.character(as.numeric(current_year) -1)
