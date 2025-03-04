@@ -425,21 +425,28 @@ slot_util <- slot_view_tbl %>%
   summarise(AVAILABLE_MINS= sum(AVAILABLE_MINS, na.rm = T),
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
+  mutate(AVAILABLE_MINS_ADJ = max(AVAILABLE_MINS, SCHEDULED_MINS)) %>%
   collect() %>%
   left_join(clarity_ser) %>%
   left_join(clarity_ser_2)
 
-
+slot_util_check <- slot_util %>%
+  filter(PROV_TYPE == "Physician") %>%
+  mutate(sched_util = SCHEDULED_MINS/AVAILABLE_MINS)
 
 slot_util_mshs_baseline <- slot_util %>%
   filter(slot_year == prior_year) %>%
   filter(PROV_TYPE == "Physician") %>%
   group_by(slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
+            avail_hours_adj = sum(AVAILABLE_MINS_ADJ, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
+  mutate() %>%
   mutate(sched_util = sched_hours/avail_hours,
-         prov_util = arrived_hours/avail_hours) %>%
+         prov_util = arrived_hours/avail_hours,
+         sched_util_adj = sched_hours/avail_hours_adj,
+         prov_util_adj = arrived_hours/avail_hours_adj) %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
 
@@ -450,10 +457,13 @@ slot_util_mshs_ytd <- slot_util %>%
   filter(PROV_TYPE == "Physician") %>%
   group_by(slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
+            avail_hours_adj = sum(AVAILABLE_MINS_ADJ, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
   mutate(sched_util = sched_hours/avail_hours,
-         prov_util = arrived_hours/avail_hours) %>%
+         prov_util = arrived_hours/avail_hours,
+         sched_util_adj = sched_hours/avail_hours_adj,
+         prov_util_adj = arrived_hours/avail_hours_adj) %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
 
@@ -463,10 +473,13 @@ slot_util_dep <- slot_util %>%
   filter(PROV_TYPE == "Physician") %>%
   group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
+            avail_hours_adj = sum(AVAILABLE_MINS_ADJ, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
   mutate(sched_util = sched_hours/avail_hours,
-         prov_util = arrived_hours/avail_hours) %>%
+         prov_util = arrived_hours/avail_hours,
+         sched_util_adj = sched_hours/avail_hours_adj,
+         prov_util_adj = arrived_hours/avail_hours_adj) %>%
   rename("SITE" = CAMPUS,
          "DEPT_SPECIALTY_NAME" = CAMPUS_SPECIALTY,
          "DEPARTMENT_NAME" = DEPARTMENT,
@@ -815,7 +828,6 @@ new_pt_waitTime_dep <- access_raw_tbl %>%
           "Month" = appt_made_month)
 
 
-
 # new_pt_scheduled_prov <- access_raw %>%
 #   filter(year(APPT_MADE_DATE) >= prior_year) %>%
 #   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PROV_ID, appt_made_year, appt_made_month, visit_type) %>%
@@ -1140,16 +1152,26 @@ department_merged <- department_merged %>%
 
 
 
-```{r ROI Overview, echo=FALSE, out.width = '15%'}
+```{r 2025 ROI Overview, echo=FALSE, out.width = '15%'}
 
 # Target 2025
+# access_target <- data.frame(
+#   Month = c(rep(seq(1:12),4)),
+#   metric_name = c(rep("prov_util",12), rep("perc_noShowPlus",12), rep("Arrived",12), rep("perc_conversion",12)),
+#   accenture_target_low = c(rep(0.85,12), rep(0.10,12), rep(0.01,12), rep(0.61,12)),
+#   accenture_target_high = c(rep(0.9,12), rep(0.07,12), rep(0.02,12), rep(0.63,12)),
+#   mshs_target = c(rep(0.7,12), rep(0.12,12), rep(0.01,12), rep(0.60,12)),
+#   mshs_budget_impact = c(rep(4000000/12,12), rep(2000000/12,12), rep(1000000/12,12), rep(1000000/12,12))
+# )
+
+
 access_target <- data.frame(
-  Month = c(rep(seq(1:12),2)),
-  metric_name = c(rep("perc_noShowPlus",12), rep("perc_conversion",12)),
-  accenture_target_low = c(rep(0.10,12), rep(0.61,12)),
-  accenture_target_high = c(rep(0.07,12), rep(0.63,12)),
-  mshs_target = c(rep(0.12,12), rep(0.60,12)),
-  mshs_impact = c(rep(2000000/12,12), rep(1000000/12,12))
+  Month = c(rep(seq(1:12),3)),
+  metric_name = c(rep("prov_util",12), rep("perc_noShowPlus",12), rep("perc_conversion",12)),
+  accenture_target_low = c(rep(0.85,12), rep(0.10,12), rep(0.61,12)),
+  accenture_target_high = c(rep(0.9,12), rep(0.07,12), rep(0.63,12)),
+  mshs_target = c(rep(0.7,12), rep(0.12,12), rep(0.60,12)),
+  mshs_budget_impact = c(rep(4000000/12,12), rep(2000000/12,12), rep(1000000/12,12))
 )
 
 access_target <- access_target %>%
@@ -1182,15 +1204,19 @@ mshs_merged_ytd <- merge(mshs_merged_ytd, referrals_mshs_ytd, all = T)
 mshs_roi <- merge(mshs_merged_ytd, mshs_merged_baseline, by = "Month", all = T)
 mshs_roi <- left_join(mshs_roi, access_target)
 
+
+
 mshs_roi <- mshs_roi %>%
-  mutate(noShow_actual = ifelse(perc_noShowPlus < perc_noShowPlus_prior_year, (perc_noShowPlus_prior_year-perc_noShowPlus)*(Arrived + SameDay_Canceled + No_Show)*110, 0),
-         noShow_budget_actualized = (round(noShow_actual/perc_noShowPlus_mshs_impact,2)),
-         conversion_actual = ifelse(perc_conversion > perc_conversion_prior_year, (perc_conversion-perc_conversion_prior_year)*(total_referrals)*110, 0), 
-         conversion_budget_actualized = (round(conversion_actual/perc_conversion_mshs_impact,2))) %>%
+  mutate(prov_util_var_baseline= (prov_util - prov_util_prior_year),
+         prov_util_actualized= ifelse((prov_util - prov_util_prior_year) >0, (prov_util - prov_util_prior_year)*avail_hours, 0),
+         prov_util_actualized_budget= (prov_util - prov_util_prior_year)*(avail_hours)*110,
+         perc_noShowPlus_var_target= (perc_noShowPlus - perc_noShowPlus_mshs_target),
+         perc_conversion_var_target = (perc_conversion - perc_conversion_mshs_target)
+         # Arrived_var_baseline = (Arrived - Arrived_prior_year)/Arrived_prior_year,
+         ) %>%
   mutate(Year = current_year)
   
 ```
-
 
 
 ```{r YTD ROI Overview, echo=FALSE, out.width = '15%'}
@@ -1397,30 +1423,20 @@ reactable(
     colGroup(name = "", columns = c("Year", "Month"),
              headerStyle = list(color = "black", fontSize = "15px"),
              sticky = "left"),
-    colGroup(name = paste0("C.1.1 No Show & Same-Day Cancel Reduction"),
-             columns = c("perc_noShowPlus_prior_year", "perc_noShowPlus_mshs_target", "perc_noShowPlus_mshs_impact", 
-                         "perc_noShowPlus", "noShow_actual", "noShow_budget_actualized"),
+    colGroup(name = paste0("C.1.1 - C.1.3 Estimated Impact: Provider Utilization"),
+             columns = c("avail_hours", 
+                         "prov_util_prior_year", "prov_util", "prov_util_var_baseline", "prov_util_actualized_budget"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
-    # colGroup(name = paste0("Referral Volume"),
-    #          columns = c("total_referrals", "total_referrals_prior_year"),
-    #          headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("C.1.1 No Show & Same-Day Cancel Reduction"),
+             columns = c("perc_noShowPlus_prior_year", "perc_noShowPlus", "perc_noShowPlus_mshs_target", "perc_noShowPlus_var_target",
+                         "perc_noShowPlus_mshs_budget_impact"),
+             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
+    # colGroup(name = paste0("C.1.2 Visit Volume Growth"),
+    #          columns = c("Arrived_prior_year", "Arrived", "Arrived_mshs_target", "Arrived_var_target"),
+    #          headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("C.1.3 Referral Retention"),
-             columns = c("perc_conversion_prior_year", "perc_conversion_mshs_target", "perc_conversion_mshs_impact",
-                          "perc_conversion", "conversion_actual", "conversion_budget_actualized"),
-             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px"))
-    # colGroup(name = paste0("No Show"),
-    #          columns = c("perc_noShowPlus"),
-    #          headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
-    # colGroup(name = paste0("New Patient Access"),
-    #          columns = c("perc_new_lead_14days", "perc_new_los"),
-    #          headerStyle = list(background = "#9E1A6D", color = "white", fontSize = "15px")),
-    # colGroup(name = paste0("Referrals + Ticket Scheduling"),
-    #          columns = c("total_referrals", "perc_conversion", "perc_completion",
-    #                      "perc_tkt_sent", "perc_tkt_sent_automated"),
-    #          headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")),
-    # colGroup(name = paste0("Digital Scheduling"),
-    #          columns = c("perc_avail_online", "perc_sched_online"),
-    #          headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px"))
+             columns = c("perc_conversion_prior_year", "perc_conversion", "perc_conversion_mshs_target", "perc_conversion_var_target"),
+             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px"))
     ),
 
   columns = list(
@@ -1430,25 +1446,95 @@ reactable(
 
     Month = colDef(
       maxWidth = 120),
-
-    perc_noShowPlus_mshs_target = colDef(
-      name = "2025 Target",
-      aggregate = "max",
+    
+    avail_hours = colDef(
+      name = "2025 Available Hours",
       maxWidth = 100,
       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(percent = TRUE, digits = 1)),
-
-    perc_noShowPlus_mshs_impact = colDef(
-      name = "2025 Target Impact",
-      aggregate = "sum",
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)
+    ),
+    
+    prov_util_prior_year = colDef(
+      name = "2024 Baseline",
       maxWidth = 100,
       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalavail_hours_prior_year = 0
+        let totalarrived_hours_prior_year = 0
+        rows.forEach(function(row) {
+          totalavail_hours_prior_year += row['avail_hours_prior_year']
+          totalarrived_hours_prior_year += row['arrived_hours_prior_year']
+        })
+        return (totalarrived_hours_prior_year) / (totalavail_hours_prior_year) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 0)
+    ),
+
+    prov_util= colDef(
+      name = "2025 YTD",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalavail_hours = 0
+        let totalarrived_hours = 0
+        rows.forEach(function(row) {
+          totalavail_hours += row['avail_hours']
+          totalarrived_hours += row['arrived_hours']
+        })
+        return (totalarrived_hours) / (totalavail_hours) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 0)
+    ),
+
+    prov_util_var_baseline = colDef(
+      name = "Variance to 2024 Baseline",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalavail_hours = 0
+        let totalarrived_hours = 0
+        let totalavail_hours_prior_year = 0
+        let totalarrived_hours_prior_year = 0
+        rows.forEach(function(row) {
+          totalavail_hours += row['avail_hours']
+          totalarrived_hours += row['arrived_hours']
+          totalavail_hours_prior_year += row['avail_hours_prior_year']
+          totalarrived_hours_prior_year += row['arrived_hours_prior_year']
+        })
+        return (totalarrived_hours/totalavail_hours) - (totalarrived_hours_prior_year/totalavail_hours_prior_year) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['prov_util_var_baseline']
+        if (value >= 0) {
+          var color = '#008000'
+        } else if (value < 0.12) {
+          var color = '#e00000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 0)
+    ),
+
+     prov_util_actualized_budget = colDef(
+      name = "$ Actualized*",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = 'sum',
+      format = colFormat(prefix = "$", separators = TRUE, digits = 0)
+    ),
 
     perc_noShowPlus_prior_year = colDef(
       name = "2024 Baseline",
       maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totalArrived_prior_year = 0
         let totalNo_Show_prior_year = 0
@@ -1465,7 +1551,7 @@ reactable(
     perc_noShowPlus = colDef(
       name = "2025 YTD",
       maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totalArrived = 0
         let totalNo_Show = 0
@@ -1479,63 +1565,47 @@ reactable(
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
 
-    noShow_actual = colDef(
-      name = "2025 YTD Impact",
-      aggregate = "sum",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
-
-    noShow_budget_actualized = colDef(
-      name = "2025 Target Impact Actualized",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalnoShow_actual = 0
-        let totalperc_noShowPlus_mshs_impact = 0
-        rows.forEach(function(row) {
-          totalnoShow_actual += row['noShow_actual']
-          totalperc_noShowPlus_mshs_impact += row['perc_noShowPlus_mshs_impact']
-        })
-        return (totalnoShow_actual) / (totalperc_noShowPlus_mshs_impact) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-    
-    
-    
-    
-    # total_referrals = colDef(
-    #   name = "2025 Referral Volume",
-    #   aggregate = "sum",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-    # 
-    # total_referrals_prior_year = colDef(
-    #   name = "2024 Referral Volume",
-    #   aggregate = "sum",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-    
-    perc_conversion_mshs_target = colDef(
+    perc_noShowPlus_mshs_target = colDef(
       name = "2025 Target",
       aggregate = "max",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       format = colFormat(percent = TRUE, digits = 1)),
 
-    perc_conversion_mshs_impact = colDef(
-      name = "2025 Target Impact",
-      aggregate = "sum",
+    perc_noShowPlus_var_target = colDef(
+      name = "Variance to 2025 Target",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
-
+      aggregate = JS("function(values, rows) {
+        let totalArrived = 0
+        let totalNo_Show = 0
+        let totalSameDay_Canceled = 0
+        let totalperc_noShowPlus_mshs_target = 0
+        rows.forEach(function(row) {
+          totalArrived += row['Arrived']
+          totalNo_Show += row['No_Show']
+          totalSameDay_Canceled += row['SameDay_Canceled']
+          totalperc_noShowPlus_mshs_target += row['perc_noShowPlus_mshs_target']
+        })
+        return ((totalNo_Show + totalSameDay_Canceled) / (totalArrived + totalNo_Show + totalSameDay_Canceled))-.12 || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_noShowPlus_var_target']
+        if (value > 0) {
+          var color = '#e00000'
+        } else if (value < 0.12) {
+          var color = '#008000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+    
     perc_conversion_prior_year = colDef(
       name = "2024 Baseline",
       maxWidth = 100,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totaltotal_referrals_prior_year = 0
         let totaltotal_scheduled_prior_year = 0
@@ -1550,7 +1620,7 @@ reactable(
     perc_conversion = colDef(
       name = "2025 YTD",
       maxWidth = 100,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totaltotal_referrals = 0
         let totaltotal_scheduled = 0
@@ -1558,40 +1628,134 @@ reactable(
           totaltotal_referrals += row['total_referrals']
           totaltotal_scheduled += row['total_scheduled']
         })
-        return (totaltotal_scheduled) / (totaltotal_referrals)
+        return (totaltotal_scheduled) / (totaltotal_referrals) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
-
-    conversion_actual = colDef(
-      name = "2025 YTD Impact",
-      aggregate = "sum",
+    
+    perc_conversion_mshs_target = colDef(
+      name = "2025 Target",
+      aggregate = "max",
       maxWidth = 100,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
-
-    conversion_budget_actualized = colDef(
-      name = "2025 Target Impact Actualized",
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(percent = TRUE, digits = 1)),
+    
+    perc_conversion_var_target = colDef(
+      name = "Variance to 2025 Target",
       maxWidth = 100,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
-        let totalconversion_actual = 0
-        let totalperc_conversion_mshs_impact = 0
+        let totaltotal_referrals = 0
+        let totaltotal_scheduled = 0
         rows.forEach(function(row) {
-          totalconversion_actual += row['conversion_actual']
-          totalperc_conversion_mshs_impact += row['perc_conversion_mshs_impact']
+          totaltotal_referrals += row['total_referrals']
+          totaltotal_scheduled += row['total_scheduled']
         })
-        return (totalconversion_actual) / (totalperc_conversion_mshs_impact) || '-'
+        return ((totaltotal_scheduled) / (totaltotal_referrals)) -.60 || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_conversion_var_target']
+        if (value >= 0) {
+          var color = '#008000'
+        } else if (value < 0.12) {
+          var color = '#e00000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
     
+
+
+
+
+
+
+
+    # total_referrals = colDef(
+    #   name = "2025 Referral Volume",
+    #   aggregate = "sum",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
+    # 
+    # total_referrals_prior_year = colDef(
+    #   name = "2024 Referral Volume",
+    #   aggregate = "sum",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
+    # 
+    # perc_conversion_mshs_target = colDef(
+    #   name = "2025 Target",
+    #   aggregate = "max",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
+    # 
+    # perc_conversion_mshs_impact = colDef(
+    #   name = "2025 Target Impact",
+    #   aggregate = "sum",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
+    # 
+    # perc_conversion_prior_year = colDef(
+    #   name = "2024 Baseline",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   aggregate = JS("function(values, rows) {
+    #     let totaltotal_referrals_prior_year = 0
+    #     let totaltotal_scheduled_prior_year = 0
+    #     rows.forEach(function(row) {
+    #       totaltotal_referrals_prior_year += row['total_referrals_prior_year']
+    #       totaltotal_scheduled_prior_year += row['total_scheduled_prior_year']
+    #     })
+    #     return (totaltotal_scheduled_prior_year) / (totaltotal_referrals_prior_year)
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
+    # 
+    # perc_conversion = colDef(
+    #   name = "2025 YTD",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   aggregate = JS("function(values, rows) {
+    #     let totaltotal_referrals = 0
+    #     let totaltotal_scheduled = 0
+    #     rows.forEach(function(row) {
+    #       totaltotal_referrals += row['total_referrals']
+    #       totaltotal_scheduled += row['total_scheduled']
+    #     })
+    #     return (totaltotal_scheduled) / (totaltotal_referrals)
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
+    # 
+    # conversion_actual = colDef(
+    #   name = "2025 YTD Impact",
+    #   aggregate = "sum",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
+    # 
+    # conversion_budget_actualized = colDef(
+    #   name = "2025 Target Impact Actualized",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   aggregate = JS("function(values, rows) {
+    #     let totalconversion_actual = 0
+    #     let totalperc_conversion_mshs_impact = 0
+    #     rows.forEach(function(row) {
+    #       totalconversion_actual += row['conversion_actual']
+    #       totalperc_conversion_mshs_impact += row['perc_conversion_mshs_impact']
+    #     })
+    #     return (totalconversion_actual) / (totalperc_conversion_mshs_impact) || '-'
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
+
     
     
     
-    
-    perc_noShowPlus_accenture_target_low = colDef(show =F),
-    perc_conversion_accenture_target_low = colDef(show =F),
-    perc_noShowPlus_accenture_target_high = colDef(show =F),
-    perc_conversion_accenture_target_high = colDef(show =F),
+
     avail_hours = colDef(show =F),
     sched_hours = colDef(show =F),
     arrived_hours = colDef(show =F),
@@ -1694,7 +1858,30 @@ reactable(
     avail_Y_sched_N_prior_year = colDef(show =F),
     avail_Y_sched_Y_prior_year = colDef(show =F),
     perc_avail_online_prior_year = colDef(show =F),
-    perc_sched_online_prior_year = colDef(show =F)
+    perc_sched_online_prior_year = colDef(show =F),
+    
+    perc_noShowPlus_accenture_target_low = colDef(show =F),
+    perc_conversion_accenture_target_low = colDef(show =F),
+    perc_noShowPlus_accenture_target_high = colDef(show =F),
+    perc_conversion_accenture_target_high = colDef(show =F),
+    prov_util_accenture_target_low = colDef(show =F),
+    Arrived_accenture_target_low = colDef(show =F),
+    prov_util_accenture_target_high = colDef(show =F),
+    Arrived_accenture_target_high = colDef(show =F),
+    prov_util_mshs_target = colDef(show =F),
+    prov_util_mshs_budget_impact = colDef(show =F),
+    Arrived_mshs_budget_impact = colDef(show =F), 
+    per_conversion_mshs_budget_impact = colDef(show =F),
+    perc_noShowPlus_mshs_budget_impact = colDef(show =F), 
+    perc_conversion_mshs_budget_impact = colDef(show =F), 
+    prov_util_actualized = colDef(show =F),
+    
+    avail_hours_adj = colDef(show =F),
+    sched_util_adj = colDef(show =F),
+    prov_util_adj = colDef(show =F),
+    avail_hours_adj_prior_year = colDef(show =F),
+    sched_util_adj_prior_year = colDef(show =F),
+    prov_util_adj_prior_year = colDef(show =F)
 
   ) # Close Columns
 
@@ -1757,7 +1944,8 @@ reactable(
              headerStyle = list(color = "black", fontSize = "15px"),
              sticky = "left"),
     colGroup(name = paste0("Template Utilization (Physicians Only)"),
-             columns = c("avail_hours", "sched_util", "prov_util"),
+             columns = c("avail_hours", "sched_util", "prov_util",
+                         "avail_hours_adj", "sched_util_adj", "prov_util_adj"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("No Show"),
              columns = c("perc_noShowPlus"),
@@ -1766,7 +1954,7 @@ reactable(
              columns = c("perc_new_lead_14days", "perc_new_los"),
              headerStyle = list(background = "#9E1A6D", color = "white", fontSize = "15px")),
     colGroup(name = paste0("Referrals + Ticket Scheduling"),
-             columns = c("total_referrals", "perc_conversion", "perc_completion", 
+             columns = c("total_referrals", "perc_conversion", "perc_completion",
                          "perc_tkt_sent", "perc_tkt_sent_automated", 
                          "perc_conversion_None", "perc_conversion_Automated", "perc_conversion_Scheduler", "perc_conversion_Both"),
              headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")),
@@ -1839,9 +2027,50 @@ reactable(
       }"),
       format = colFormat(percent = TRUE, digits = 0)
     ),
+    
+    avail_hours_adj = colDef(
+      name = "Available Hrs Adj.",
+      aggregate = "sum",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(separators = TRUE, digits = 0)),
+
+    sched_util_adj = colDef(
+      name = "Schedule Utilization Adj.",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalsched_hours = 0
+        let totalavail_hours_adj = 0
+        rows.forEach(function(row) {
+          totalsched_hours += row['sched_hours']
+          totalavail_hours_adj += row['avail_hours_adj']
+        })
+        return (totalsched_hours) / (totalavail_hours_adj) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 0)
+    ),
+
+    prov_util_adj = colDef(
+      name = "Provider Utilization Adj.",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalavail_hours_adj = 0
+        let totalarrived_hours = 0
+        rows.forEach(function(row) {
+          totalavail_hours_adj += row['avail_hours_adj']
+          totalarrived_hours += row['arrived_hours']
+        })
+        return (totalarrived_hours) / (totalavail_hours_adj) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 0)
+    ),
 
     perc_noShowPlus = colDef(
-      name = "No Show Rate",
+      name = "No Show Plus Rate",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
@@ -1922,7 +2151,7 @@ reactable(
           totaltotal_referrals += row['total_referrals']
           totaltotal_scheduled += row['total_scheduled']
         })
-        return (totaltotal_scheduled) / (totaltotal_referrals)
+        return (totaltotal_scheduled) / (totaltotal_referrals) || '-'
       }"),
       style = JS("function(rowInfo) {
         var value = rowInfo.row['perc_conversion']
@@ -1949,7 +2178,7 @@ reactable(
           totaltotal_referrals += row['total_referrals']
           totaltotal_completed += row['total_completed']
         })
-        return (totaltotal_completed) / (totaltotal_referrals)
+        return (totaltotal_completed) / (totaltotal_referrals) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
@@ -1965,7 +2194,7 @@ reactable(
           totaltotal_referrals += row['total_referrals']
           totaltotal_tkt_sent += row['total_tkt_sent']
         })
-        return (totaltotal_tkt_sent) / (totaltotal_referrals)
+        return (totaltotal_tkt_sent) / (totaltotal_referrals) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
@@ -1981,7 +2210,7 @@ reactable(
           totaltotal_referrals += row['total_referrals']
           totaltotal_tkt_sent_automated += row['total_tkt_sent_automated']
         })
-        return (totaltotal_tkt_sent_automated) / (totaltotal_referrals)
+        return (totaltotal_tkt_sent_automated) / (totaltotal_referrals) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
@@ -2021,7 +2250,7 @@ reactable(
     perc_conversion_None = colDef(
       name = "Conversion Rate - No Tickets",
       maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totalscheduled_None = 0
         let totalnon_converted_None = 0
@@ -2029,7 +2258,7 @@ reactable(
           totalscheduled_None += row['scheduled_None']
           totalnon_converted_None += row['non_converted_None']
         })
-        return (totalscheduled_None) / (totalscheduled_None + totalnon_converted_None)
+        return (totalscheduled_None) / (totalscheduled_None + totalnon_converted_None) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
@@ -2037,7 +2266,7 @@ reactable(
     perc_conversion_Automated = colDef(
       name = "Conversion Rate - Automated Tickets",
       maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totalscheduled_Automated = 0
         let totalnon_converted_Automated = 0
@@ -2045,7 +2274,7 @@ reactable(
           totalscheduled_Automated += row['scheduled_Automated']
           totalnon_converted_Automated += row['non_converted_Automated']
         })
-        return (totalscheduled_Automated) / (totalscheduled_Automated + totalnon_converted_Automated)
+        return (totalscheduled_Automated) / (totalscheduled_Automated + totalnon_converted_Automated) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
@@ -2053,7 +2282,7 @@ reactable(
     perc_conversion_Scheduler = colDef(
       name = "Conversion Rate - Scheduler Tickets",
       maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totalscheduled_Scheduler = 0
         let totalnon_converted_Scheduler = 0
@@ -2061,7 +2290,7 @@ reactable(
           totalscheduled_Scheduler += row['scheduled_Scheduler']
           totalnon_converted_Scheduler += row['non_converted_Scheduler']
         })
-        return (totalscheduled_Scheduler) / (totalscheduled_Scheduler + totalnon_converted_Scheduler)
+        return (totalscheduled_Scheduler) / (totalscheduled_Scheduler + totalnon_converted_Scheduler) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
@@ -2069,7 +2298,7 @@ reactable(
     perc_conversion_Both = colDef(
       name = "Conversion Rate - Both Tickets",
       maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totalscheduled_Both = 0
         let totalnon_converted_Both = 0
@@ -2077,7 +2306,7 @@ reactable(
           totalscheduled_Both += row['scheduled_Both']
           totalnon_converted_Both += row['non_converted_Both']
         })
-        return (totalscheduled_Both) / (totalscheduled_Both + totalnon_converted_Both)
+        return (totalscheduled_Both) / (totalscheduled_Both + totalnon_converted_Both) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
@@ -2158,6 +2387,8 @@ reactable(
 
     Month = colDef(show =F),
     DEPARTMENT_ID = colDef(show =F),
+    sched_hours = colDef(show =F),
+    arrived_hours = colDef(show =F),
     sched_hours = colDef(show =F),
     arrived_hours = colDef(show =F),
     Arrived = colDef(show =F),
