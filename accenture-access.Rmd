@@ -426,7 +426,7 @@ slot_util <- slot_view_tbl %>%
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
   mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
-  filter(sched_util > 0.1 & sched_util <= 1.5) %>%
+  filter(sched_util > 0.3 & sched_util <= 1.5) %>%
   collect() %>%
   left_join(clarity_ser) %>%
   left_join(clarity_ser_2)
@@ -1385,6 +1385,7 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 
 # Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
 *Report run date: `r report_run_date`*<br/>
+*Template utilization filtered to exclude provider utilization <30% & >150%
 ______________________________________________________________________________________________________________________________
 <br/>
 <br/>
@@ -1962,8 +1963,7 @@ reactable(
              headerStyle = list(color = "black", fontSize = "15px"),
              sticky = "left"),
     colGroup(name = paste0("Template Utilization (Physicians Only)"),
-             columns = c("avail_hours", "sched_util", "prov_util",
-                         "avail_hours_adj", "sched_util_adj", "prov_util_adj"),
+             columns = c("avail_hours", "sched_util", "prov_util"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("No Show"),
              columns = c("perc_noShowPlus"),
@@ -2042,47 +2042,6 @@ reactable(
           totalarrived_hours += row['arrived_hours']
         })
         return (totalarrived_hours) / (totalavail_hours) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 0)
-    ),
-    
-    avail_hours_adj = colDef(
-      name = "Available Hrs Adj.",
-      aggregate = "sum",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(separators = TRUE, digits = 0)),
-
-    sched_util_adj = colDef(
-      name = "Schedule Utilization Adj.",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalsched_hours = 0
-        let totalavail_hours_adj = 0
-        rows.forEach(function(row) {
-          totalsched_hours += row['sched_hours']
-          totalavail_hours_adj += row['avail_hours_adj']
-        })
-        return (totalsched_hours) / (totalavail_hours_adj) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 0)
-    ),
-
-    prov_util_adj = colDef(
-      name = "Provider Utilization Adj.",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalavail_hours_adj = 0
-        let totalarrived_hours = 0
-        rows.forEach(function(row) {
-          totalavail_hours_adj += row['avail_hours_adj']
-          totalarrived_hours += row['arrived_hours']
-        })
-        return (totalarrived_hours) / (totalavail_hours_adj) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 0)
     ),
