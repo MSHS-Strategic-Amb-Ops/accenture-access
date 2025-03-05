@@ -1392,7 +1392,7 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 
 
 # Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
-*Template utilization filtered to exclude provider utilization <30% & >150%*<br/>
+<!-- *Template utilization filtered to exclude provider utilization <30% & >150%*<br/> -->
 ______________________________________________________________________________________________________________________________
 <br/>
 <br/>
