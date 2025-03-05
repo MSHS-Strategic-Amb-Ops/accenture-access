@@ -423,12 +423,12 @@ slot_util <- slot_view_tbl %>%
   mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-  group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROVIDER, PROV_ID, SLOT_DATE, slot_year, slot_month) %>%
+  group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROVIDER, PROV_ID, slot_year, slot_month) %>%
   summarise(AVAILABLE_MINS= sum(AVAILABLE_MINS, na.rm = T),
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
-  # mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
-  # filter(sched_util > 0.3 & sched_util <= 1.5) %>%
+  mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
+  filter(sched_util > 0.3 & sched_util <= 1.5) %>%
   collect() %>%
   left_join(clarity_ser) %>%
   left_join(clarity_ser_2)
@@ -1393,7 +1393,7 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 
 # Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
 *Report run date: `r report_run_date`*<br/>
-<!-- *Template utilization filtered to exclude provider utilization <30% & >150%*<br/> -->
+*Excludes monthly provider utilization <30% & >150%*<br/>
 ______________________________________________________________________________________________________________________________
 <br/>
 <br/>
