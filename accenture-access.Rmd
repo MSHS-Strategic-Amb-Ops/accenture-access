@@ -1406,7 +1406,8 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 
 # Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
 *Report run date: `r report_run_date`*<br/>
-*Excludes monthly provider utilization <30% & >150%*<br/>
+*Excludes monthly provider utilizations <30% & >150%*<br/>
+*Excludes MSH-Ambulatory Care Templates from Jan-May 2024*<br/>
 ______________________________________________________________________________________________________________________________
 <br/>
 <br/>
@@ -1983,7 +1984,7 @@ reactable(
 
 ```
 <br/>
-*Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)*<br/>
+<p style="font-size:8pt; font-style:italic">*Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)<p/><br/>
 <br/>
 
 ## Metrics by Department
@@ -2492,8 +2493,8 @@ reactable(
 
 ```
 <br/>
-*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)*<br/>
-*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care*<br/>
+<p style="font-size:8pt; font-style:italic">*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)<p/><br/>
+<p style="font-size:8pt; font-style:italic">*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care<p/><br/>
 
 <br/>
 <br/>
