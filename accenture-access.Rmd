@@ -1984,7 +1984,7 @@ reactable(
 
 ```
 <br/>
-<p style="font-size:8pt; font-style:italic">*Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)<p/><br/>
+<p style="font-size:10pt; font-style:italic">*Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)<p/><br/>
 <br/>
 
 ## Metrics by Department
@@ -2493,8 +2493,8 @@ reactable(
 
 ```
 <br/>
-<p style="font-size:8pt; font-style:italic">*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)<p/><br/>
-<p style="font-size:8pt; font-style:italic">*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care<p/><br/>
+<p style="font-size:10pt; font-style:italic">*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)<p/>
+<p style="font-size:10pt; font-style:italic">*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care<p/>
 
 <br/>
 <br/>
