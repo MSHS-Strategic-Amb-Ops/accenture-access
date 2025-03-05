@@ -1968,8 +1968,9 @@ reactable(
 # ) # Close htmltools
 
 ```
-**Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)*<br/>
-
+<br/>
+*Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)*<br/>
+<br/>
 
 ## Metrics by Department
 ```{r New Patients Scheduled within 14 Days Output, echo = FALSE, warning = FALSE, message = FALSE}
@@ -2476,8 +2477,9 @@ reactable(
 ) # Close htmltools
 
 ```
-**New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)*<br/>
-**Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care*<br/>
+<br/>
+*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)*<br/>
+*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care*<br/>
 
 <br/>
 <br/>
