@@ -374,8 +374,8 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 ```{r Report Variables, echo = FALSE, warning = FALSE, message = FALSE}
 
 report_run_date <- Sys.Date()
-# date_start <- format(Sys.Date(), "%Y-%m-%d")
-date_start <- paste0(format(as.Date("2025-02-01"), "%Y-%m"),"-01")
+date_start <- format(Sys.Date(), "%Y-%m-%d")
+# date_start <- paste0(format(Sys.Date(), "%Y-%m"),"-01")
 
 current_year <- format(report_run_date, "%Y")
 prior_year <- as.character(as.numeric(current_year) -1)
@@ -420,16 +420,19 @@ slot_util <- slot_view_tbl %>%
          slot_month = month(SLOT_DATE)) %>%
   filter(slot_year >= prior_year) %>%
   filter(SLOT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% c("Family Medicine", "Internal Medicine"), "Primary Care", "Specialty")) %>%
+  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROVIDER, PROV_ID, SLOT_DATE, slot_year, slot_month) %>%
   summarise(AVAILABLE_MINS= sum(AVAILABLE_MINS, na.rm = T),
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
-  # mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
+  mutate(sched_util = ifelse(is.na(AVAILABLE_MINS), 0, SCHEDULED_MINS/AVAILABLE_MINS)) %>%
   # filter(sched_util > 0.3 & sched_util <= 1.5) %>%
   collect() %>%
   left_join(clarity_ser) %>%
   left_join(clarity_ser_2)
+
 
 
 slot_util_mshs_baseline <- slot_util %>%
@@ -590,7 +593,9 @@ no_show_dep <- access_raw_tbl %>%
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-   mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% c("Family Medicine", "Internal Medicine"), "Primary Care", "Specialty")) %>%
+  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
   filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
@@ -719,7 +724,9 @@ new_pt_ratio_dep <- access_raw_tbl %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW"),
          new_pt_los = ifelse(is.na(LOS_NAME), "ESTABLISHED_LOS", ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "NEW_LOS", "ESTABLISHED_LOS"))) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% c("Family Medicine", "Internal Medicine"), "Primary Care", "Specialty")) %>%
+  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
   filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
@@ -825,7 +832,9 @@ new_pt_waitTime_dep <- access_raw_tbl %>%
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% c("Family Medicine", "Internal Medicine"), "Primary Care", "Specialty")) %>%
+  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
   filter(year(APPT_MADE_DATE) >= prior_year) %>%
   filter(APPT_MADE_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
@@ -1046,7 +1055,9 @@ appt_online <- access_raw_tbl %>%
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% c("Family Medicine", "Internal Medicine"), "Primary Care", "Specialty")) %>%
+ mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
 
   filter(year(APPT_MADE_DATE) >= prior_year) %>%
   filter(APPT_MADE_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
@@ -1381,9 +1392,7 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 
 
 # Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
-*Report run date: `r report_run_date`*<br/>
-<!-- *Template utilization filtered to exclude provider utilization <30% & >150%*<br/> -->
-*No filtering on template utilization data*<br/>
+*Template utilization filtered to exclude provider utilization <30% & >150%*<br/>
 ______________________________________________________________________________________________________________________________
 <br/>
 <br/>
@@ -1592,7 +1601,7 @@ reactable(
     ),
 
      prov_util_actualized_budget = colDef(
-      name = "$ Actualized*",
+      name = "Estimated Revenue Impact*",
       maxWidth = 100,
       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
@@ -1959,6 +1968,7 @@ reactable(
 # ) # Close htmltools
 
 ```
+**Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)*<br/>
 
 
 ## Metrics by Department
@@ -2045,7 +2055,7 @@ reactable(
       maxWidth = 150),
     
     `Specialty Type` = colDef(
-      name = "Specialty Type",
+      name = "Specialty Type*",
       maxWidth = 150),
 
     Specialty = colDef(
@@ -2127,7 +2137,7 @@ reactable(
     ),
     
     perc_new_lead_14days = colDef(
-      name = "% New Scheduled ≤14 Days",
+      name = "% New Scheduled within 14 Days",
       maxWidth = 100,
       headerStyle = list(background = "#9E1A6D", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
@@ -2144,7 +2154,7 @@ reactable(
     ),
     
     perc_new_los = colDef(
-      name = "New Patient Ratio",
+      name = "New Patient Ratio*",
       maxWidth = 100,
       headerStyle = list(background = "#9E1A6D", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
@@ -2466,5 +2476,8 @@ reactable(
 ) # Close htmltools
 
 ```
+**New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)*<br/>
+**Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care*<br/>
+
 <br/>
 <br/>
