@@ -606,7 +606,7 @@ no_show_dep <- access_raw_tbl %>%
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
@@ -737,7 +737,7 @@ new_pt_ratio_dep <- access_raw_tbl %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW"),
          new_pt_los = ifelse(is.na(LOS_NAME), "ESTABLISHED_LOS", ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "NEW_LOS", "ESTABLISHED_LOS"))) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
@@ -845,7 +845,7 @@ new_pt_waitTime_dep <- access_raw_tbl %>%
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
@@ -1101,6 +1101,38 @@ ref_exclude <- c(
 
 ```{r Referrals- Caboodle ReferralsDataView, echo = FALSE, warning = FALSE, message = FALSE}
 
+
+ref_baseline <- caboodle_referrals_conn %>%
+  filter(!(ProcedureName %in% ref_exclude)) %>%
+  filter(year(Creation_Date) == prior_year) %>%
+  filter(ReceivedByDept != "*Unspecified") %>%
+  filter(Status != "Denied") %>%
+  filter(Class != "Outgoing") %>%
+  mutate(start_year = year(Creation_Date),
+         start_month = month(Creation_Date)) %>% 
+  group_by(ReferralEpicId, start_year, start_month) %>%
+  summarise(baseline = "Y") %>%
+  collect()
+
+ref_dept <- caboodle_referrals_conn %>%
+  filter(!(ProcedureName %in% ref_exclude)) %>%
+  filter(year(Creation_Date) == prior_year) %>%
+  filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
+  filter(ReceivedByDept != "*Unspecified") %>%
+  filter(Status != "Denied") %>%
+  filter(Class != "Outgoing") %>%
+  mutate(start_year = year(Creation_Date),
+         start_month = month(Creation_Date)) %>%
+  group_by(ReceivedByDept, ReceivedByDepID, start_year, start_month, TicketsSentToPatBy_X, ReferralEpicId) %>%
+  summarise(dept = "Y") %>%
+  collect()
+
+
+
+
+
+
+
 referrals_mshs_baseline <- caboodle_referrals_conn %>%
   filter(!(ProcedureName %in% ref_exclude)) %>%
   filter(year(Creation_Date) == prior_year) %>%
@@ -1280,7 +1312,7 @@ appt_online <- access_raw_tbl %>%
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
- mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
 
@@ -1377,6 +1409,12 @@ department_merged <- merge(department_merged, new_pt_waitTime_dep, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
 department_merged <- merge(department_merged, appt_avail_online_dep, all = T)
 department_merged <- merge(department_merged, referrals_dep, all = T)
+
+
+referrals_dep_check <- department_merged %>%
+  group_by(DEPARTMENT_ID, Year, Month) %>%
+  summarise(total_referrals = sum(total_referrals, na.rm = T)) %>%
+  left_join(referrals_dep %>% group_by(DEPARTMENT_ID, Year, Month) %>% summarise(total_referrals_org = sum(total_referrals, na.rm = T)))
 
 
 department_merged <- department_merged %>%
