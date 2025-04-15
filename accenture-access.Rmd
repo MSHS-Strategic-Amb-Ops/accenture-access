@@ -491,27 +491,18 @@ slot_util_dep <- slot_util %>%
          "Month" = slot_month)
 
 
-# slot_util_prov <- slot_view_tbl %>%
-#   mutate(slot_year = year(SLOT_DATE),
-#          slot_month = month(SLOT_DATE)) %>%
-#   filter(slot_year >= prior_year) %>%
-#   group_by(CAMPUS, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROV_ID, PROVIDER, slot_year, slot_month) %>%
-#   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
-#             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
-#             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
-#   group_by(CAMPUS, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROV_ID, PROVIDER, slot_year, slot_month) %>%
-#   summarise(avail_hours = sum(avail_hours, na.rm = T),
-#             avail_hours_week = mean(avail_hours, na.rm = T),
-#             sched_hours = sum(sched_hours, na.rm = T),
-#             arrived_hours = sum(arrived_hours)) %>%
-#   mutate(sched_util = sched_hours/avail_hours,
-#          prov_util = arrived_hours/avail_hours) %>%
-#   collect() %>%
-#   rename("SITE" = CAMPUS,
-#          "DEPT_SPECIALTY_NAME" = CAMPUS_SPECIALTY,
-#          "DEPARTMENT_NAME" = DEPARTMENT,
-#          "Year" = slot_year,
-#          "Month" = slot_month)
+slot_util_prov <- slot_util %>%
+  group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROV_ID, PROV_TYPE, PROVIDER, slot_year, slot_month) %>%
+  summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
+            sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
+            arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
+  mutate(sched_util = sched_hours/avail_hours,
+         prov_util = arrived_hours/avail_hours) %>%
+  rename("SITE" = CAMPUS,
+         "DEPT_SPECIALTY_NAME" = CAMPUS_SPECIALTY,
+         "DEPARTMENT_NAME" = DEPARTMENT,
+         "Year" = slot_year,
+         "Month" = slot_month)
 
 
 ```
@@ -627,10 +618,31 @@ no_show_dep <- access_raw_tbl %>%
           "Month" = appt_month)
 
 
-# no_show_prov <- access_raw %>%
+# no_show_dep <- access_raw_tbl %>%
+#   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+#   
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+#                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
+#                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+#   
 #   filter(year(CONTACT_DATE) >= prior_year) %>%
+#   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
 #   filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PROV_ID, appt_year, appt_month, appt_status) %>%
+#   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, appt_status) %>%
 #   summarise(total = n()) %>%
 #   collect() %>%
 #   pivot_wider(names_from = appt_status,
@@ -639,8 +651,10 @@ no_show_dep <- access_raw_tbl %>%
 #   mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
 #          perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
 #          perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
-#   rename("Year" = appt_year,
+#   rename("No_Show" = `No Show`,
+#          "Year" = appt_year,
 #           "Month" = appt_month)
+
 
 
 ```
@@ -890,6 +904,51 @@ new_pt_waitTime_dep <- access_raw_tbl %>%
 ```
 
 
+```{r Payer Mix, echo = FALSE, warning = FALSE, message = FALSE}
+
+
+payer_mix_dep <- access_raw_tbl %>%
+  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  # filter(PROV_TYPE == "Physician") %>%
+  
+  filter(!is.na(SITE)) %>%
+  filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+                     "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE)) %>%
+  mutate(appt_made_year = year(APPT_MADE_DATE),
+         appt_made_month = month(APPT_MADE_DATE)) %>%
+  mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW"),
+         new_pt_los = ifelse(is.na(LOS_NAME), "ESTABLISHED_LOS", ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "NEW_LOS", "ESTABLISHED_LOS"))) %>%
+  mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  
+  filter(year(CONTACT_DATE) >= prior_year) %>%
+  filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+  filter(appt_status %in% c("Arrived")) %>%
+  group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, new_pt_los, FINCLASS, VISITPLAN) %>%
+  summarise(total = n()) %>%
+  collect() 
+  # pivot_wider(names_from = new_pt_los,
+  #             values_from = total,
+  #             values_fill = 0) %>%
+  # rowwise() %>%
+  # mutate(appts_arrived = sum(NEW_LOS, ESTABLISHED_LOS, na.rm = T),
+  #        perc_new_los = NEW_LOS/appts_arrived) %>%
+  # rename("Year" = appt_year,
+  #        "Month" = appt_month)
+
+require(openxlsx)
+write.xlsx(payer_mix_dep, "EPIC Payer Mix_032625.xlsx")
+```
+
+
 ```{r Referral Exclusion,  echo = FALSE, warning = FALSE, message = FALSE}
 
 #Referral Orders to Exclude from Conversion Reporting
@@ -1102,35 +1161,35 @@ ref_exclude <- c(
 ```{r Referrals- Caboodle ReferralsDataView, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-ref_baseline <- caboodle_referrals_conn %>%
-  filter(!(ProcedureName %in% ref_exclude)) %>%
-  filter(year(Creation_Date) == prior_year) %>%
-  filter(ReceivedByDept != "*Unspecified") %>%
-  filter(Status != "Denied") %>%
-  filter(Class != "Outgoing") %>%
-  mutate(start_year = year(Creation_Date),
-         start_month = month(Creation_Date)) %>% 
-  group_by(ReferralEpicId, start_year, start_month) %>%
-  summarise(baseline = "Y") %>%
-  collect()
-
-ref_dept <- caboodle_referrals_conn %>%
-  filter(!(ProcedureName %in% ref_exclude)) %>%
-  filter(year(Creation_Date) == prior_year) %>%
-  filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
-  filter(ReceivedByDept != "*Unspecified") %>%
-  filter(Status != "Denied") %>%
-  filter(Class != "Outgoing") %>%
-  mutate(start_year = year(Creation_Date),
-         start_month = month(Creation_Date)) %>%
-  group_by(ReceivedByDept, ReceivedByDepID, start_year, start_month, TicketsSentToPatBy_X, ReferralEpicId) %>%
-  summarise(dept = "Y") %>%
-  collect()
-
-
-
-
-
+# ref_baseline <- caboodle_referrals_conn %>%
+#   head(10) %>%
+#   collect()
+# 
+# 
+# ref_fact <- caboodle_referralFact_conn %>%
+#   head(10) %>%
+#   collect()
+# 
+# 
+# ref_dept <- caboodle_referrals_conn %>%
+#   left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralEpicId, InAnyWorkqueue)) %>%
+#   # filter(!(ProcedureName %in% ref_exclude)) %>%
+#   filter(year(Creation_Date) >= prior_year) %>%
+#   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
+#   filter(ReceivedByDept != "*Unspecified") %>%
+#   filter(Status != "Denied") %>%
+#   filter(Class != "Outgoing") %>%
+#   mutate(start_year = year(Creation_Date),
+#          start_month = month(Creation_Date)) %>%
+#   group_by(ReceivedBySite, ReceivedBySpecialtyFromDepDim, ReceivedByDept, ReceivedByDepID, start_year, start_month, ProcedureName, InAnyWorkqueue) %>%
+#   summarise(non_converted = n_distinct(ReferralEpicId[is.na(AppointmentStatus)]),
+#             scheduled = n_distinct(ReferralEpicId[!is.na(AppointmentStatus)]),
+#             completed = n_distinct(ReferralEpicId[AppointmentStatus %in% c("Arrived", "Completed")])) %>%
+#   collect()
+# 
+# 
+# 
+# 
 
 
 referrals_mshs_baseline <- caboodle_referrals_conn %>%
@@ -1207,7 +1266,7 @@ referrals_mshs_ytd <- caboodle_referrals_conn %>%
 
 
 referrals_dep <- caboodle_referrals_conn %>%
-  filter(!(ProcedureName %in% ref_exclude)) %>%
+  # filter(!(ProcedureName %in% ref_exclude)) %>%
   filter(year(Creation_Date) >= prior_year) %>%
   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
   filter(ReceivedByDept != "*Unspecified") %>%
@@ -1435,7 +1494,29 @@ department_merged <- department_merged %>%
 
 
 # require(openxlsx)
-# write.xlsx(department_merged %>% filter(Year == 2023), "department_merged_2023.xlsx")
+# write.xlsx(department_merged, "department_merged_031625.xlsx")
+
+```
+
+
+
+```{r Executive Scorecard Data Pull}
+
+# site_merged <- department_merged %>%
+#   group_by(SITE, Year, Month) %>%
+#   summarise(`Referral Volume` = sum(total_referrals, na.rm = T),
+#             `Referrals Scheduled` = sum(total_scheduled, na.rm = T),
+#             `Referral Conversion Rate`= round(`Referrals Scheduled`/`Referral Volume`,2),
+#             `Appts Scheduled Online` = sum(avail_Y_sched_Y, na.rm = T),
+#             `Appts Available for Online Scheduling` = sum(avail_N_sched_N, avail_Y_sched_N, avail_Y_sched_Y, na.rm = T),
+#             `Percent Appts Scheduled Online` = round(`Appts Scheduled Online`/`Appts Available for Online Scheduling`, 2)) %>%
+#   filter(!(Year == 2025 & Month == 4))
+# 
+# 
+# require(openxlsx)
+# write.xlsx(site_merged, "Executive Scorecard Ambulatory Metrics_041425.xlsx")
+
+  
 ```
 
 
@@ -2443,6 +2524,13 @@ reactable(
       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
       format = colFormat(separators = TRUE, digits = 0)),
     
+    total_scheduled = colDef(
+      name = "Referrals Scheduled",
+      aggregate = "sum",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(separators = TRUE, digits = 0)),
+    
     perc_conversion = colDef(
       name = "Conversion Rate",
       maxWidth = 100,
@@ -2703,7 +2791,7 @@ reactable(
     appts_arrived = colDef(show =F),
     ESTABLISHED_LOS = colDef(show =F),
     total_referrals = colDef(show =F),
-    total_scheduled = colDef(show =F),
+    # total_scheduled = colDef(show =F),
     total_completed = colDef(show =F),
     total_tkt_sent_automated = colDef(show =F),
     total_tkt_sent_scheduler = colDef(show =F),
