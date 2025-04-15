@@ -944,8 +944,8 @@ payer_mix_dep <- access_raw_tbl %>%
   # rename("Year" = appt_year,
   #        "Month" = appt_month)
 
-require(openxlsx)
-write.xlsx(payer_mix_dep, "EPIC Payer Mix_032625.xlsx")
+# require(openxlsx)
+# write.xlsx(payer_mix_dep, "EPIC Payer Mix_032625.xlsx")
 ```
 
 
