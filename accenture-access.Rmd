@@ -2379,7 +2379,7 @@ reactable(
              columns = c("perc_new_lead_14days", "perc_new_los"),
              headerStyle = list(background = "#9E1A6D", color = "white", fontSize = "15px")),
     colGroup(name = paste0("Referrals + Ticket Scheduling"),
-             columns = c("total_referrals", "perc_conversion", "perc_completion",
+             columns = c("total_referrals", "total_scheduled", "perc_conversion", "perc_completion",
                          "perc_tkt_sent", "perc_tkt_sent_automated", 
                          "perc_conversion_None", "perc_conversion_Automated", "perc_conversion_Scheduler", "perc_conversion_Both"),
              headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")),
@@ -2525,7 +2525,7 @@ reactable(
       format = colFormat(separators = TRUE, digits = 0)),
     
     total_scheduled = colDef(
-      name = "Referrals Scheduled",
+      name = "Total Referrals Scheduled",
       aggregate = "sum",
       maxWidth = 100,
       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
