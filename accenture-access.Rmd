@@ -373,34 +373,34 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 
 ```{r}
 
-pb <- tbl(conn2, "Y_pb_trans")
-
-fpax_tbl <- tbl(conn1, "FPAX_MERGED_DETAIL")
-fpax <- fpax_tbl %>%
-  group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
-  summarise(CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T)) %>%
-  collect()
-
-hb_trans_conn <- tbl(conn5, dbplyr::ident_q('"CLARITY"."HSP_TRANSACTIONS"'))
-hb_trans <- hb_trans_conn %>%
-  filter(!is.na(PAT_ENC_CSN_ID)) %>%
-  group_by(PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
-  summarise(TX_AMOUNT = sum(TX_AMOUNT, na.rm = T)) %>%
-  collect()
-
-fpax_tbl <- tbl(conn1, "HSP_TRANSACTIONS")
-
-  
-access <- access_raw_tbl %>%
-  # left_join(fpax_tbl %>%
-  #             group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
-  #             summarise(CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T),
-  #                       by = c("PAT_ENC_CSN_ID" = "EPIC_ENCOUNTER_CSN"))) %>%
-  filter(DERIVED_STATUS_DESC == "Arrived") %>%
-  filter(year(CONTACT_DATE) >= 2021) %>%
-  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID, PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
-  summarise(total = n()) %>%
-  collect()
+# pb <- tbl(conn2, "Y_pb_trans")
+# 
+# fpax_tbl <- tbl(conn1, "FPAX_MERGED_DETAIL")
+# fpax <- fpax_tbl %>%
+#   group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
+#   summarise(CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T)) %>%
+#   collect()
+# 
+# hb_trans_conn <- tbl(conn5, dbplyr::ident_q('"CLARITY"."HSP_TRANSACTIONS"'))
+# hb_trans <- hb_trans_conn %>%
+#   filter(!is.na(PAT_ENC_CSN_ID)) %>%
+#   group_by(PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
+#   summarise(TX_AMOUNT = sum(TX_AMOUNT, na.rm = T)) %>%
+#   collect()
+# 
+# fpax_tbl <- tbl(conn1, "HSP_TRANSACTIONS")
+# 
+#   
+# access <- access_raw_tbl %>%
+#   # left_join(fpax_tbl %>%
+#   #             group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
+#   #             summarise(CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T),
+#   #                       by = c("PAT_ENC_CSN_ID" = "EPIC_ENCOUNTER_CSN"))) %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   filter(year(CONTACT_DATE) >= 2021) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID, PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
+#   summarise(total = n()) %>%
+#   collect()
 
 ```
 
