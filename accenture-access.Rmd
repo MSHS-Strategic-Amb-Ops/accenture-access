@@ -2259,25 +2259,32 @@ reactable(
     ),
     
     prov_util_actualized = colDef(
-      name = "Addt'l Volume Completed",
+      name = "Addt'l Visits Completed",
       maxWidth = 100,
       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
       aggregate = JS("function(values, rows) {
-        let totalavail_hours = 0
-        let totalarrived_hours = 0
-        let totalavail_hours_prior_year = 0
-        let totalarrived_hours_prior_year = 0
-        let totalArrived_Physician = 0
+        let totalprov_util_actualized = 0
         rows.forEach(function(row) {
-          totalavail_hours += row['avail_hours']
-          totalarrived_hours += row['arrived_hours']
-          totalavail_hours_prior_year += row['avail_hours_prior_year']
-          totalarrived_hours_prior_year += row['arrived_hours_prior_year']
-          totalArrived_Physician += row['Arrived_Physician']
+          totalprov_util_actualized += row['prov_util_actualized']
         })
-        return Math.max(0,((totalarrived_hours/totalavail_hours) - (totalarrived_hours_prior_year/totalavail_hours_prior_year))*totalArrived_Physician) || '-'
+        return Math.max(0,prov_util_actualized) || '-'
       }"),
+      # aggregate = JS("function(values, rows) {
+      #   let totalavail_hours = 0
+      #   let totalarrived_hours = 0
+      #   let totalavail_hours_prior_year = 0
+      #   let totalarrived_hours_prior_year = 0
+      #   let totalArrived_Physician = 0
+      #   rows.forEach(function(row) {
+      #     totalavail_hours += row['avail_hours']
+      #     totalarrived_hours += row['arrived_hours']
+      #     totalavail_hours_prior_year += row['avail_hours_prior_year']
+      #     totalarrived_hours_prior_year += row['arrived_hours_prior_year']
+      #     totalArrived_Physician += row['Arrived_Physician']
+      #   })
+      #   return Math.max(0,((totalarrived_hours/totalavail_hours) - (totalarrived_hours_prior_year/totalavail_hours_prior_year))*totalArrived_Physician) || '-'
+      # }"),
       format = colFormat(separators = TRUE, digits = 0)
       ),
 
@@ -2365,23 +2372,24 @@ reactable(
       name = "Addt'l Visits Completed",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalArrived_Physician_prior_year = 0
-        let totalNo_Show_Physician_prior_year = 0
-        let totalSameDay_Canceled_Physician_prior_year = 0
-        let totalArrived_Physician = 0
-        let totalNo_Show_Physician = 0
-        let totalSameDay_Canceled_Physician = 0
-        rows.forEach(function(row) {
-          totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
-          totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
-          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
-          totalArrived_Physician += row['Arrived_Physician']
-          totalNo_Show_Physician += row['No_Show_Physician']
-          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
-        })
-        return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) || '-'
-      }"),
+      aggregate = "sum",
+      # aggregate = JS("function(values, rows) {
+      #   let totalArrived_Physician_prior_year = 0
+      #   let totalNo_Show_Physician_prior_year = 0
+      #   let totalSameDay_Canceled_Physician_prior_year = 0
+      #   let totalArrived_Physician = 0
+      #   let totalNo_Show_Physician = 0
+      #   let totalSameDay_Canceled_Physician = 0
+      #   rows.forEach(function(row) {
+      #     totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
+      #     totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
+      #     totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+      #     totalArrived_Physician += row['Arrived_Physician']
+      #     totalNo_Show_Physician += row['No_Show_Physician']
+      #     totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+      #   })
+      #   return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) || '-'
+      # }"),
       style = list(fontWeight = "Bold", background = "#fcdcf0"),
       format = colFormat(separators = TRUE, digits = 0)),
     
@@ -2389,23 +2397,24 @@ reactable(
       name = "Estimated Revenue Impact**",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalArrived_Physician_prior_year = 0
-        let totalNo_Show_Physician_prior_year = 0
-        let totalSameDay_Canceled_Physician_prior_year = 0
-        let totalArrived_Physician = 0
-        let totalNo_Show_Physician = 0
-        let totalSameDay_Canceled_Physician = 0
-        rows.forEach(function(row) {
-          totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
-          totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
-          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
-          totalArrived_Physician += row['Arrived_Physician']
-          totalNo_Show_Physician += row['No_Show_Physician']
-          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
-        })
-        return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))*110) || '-'
-      }"),
+      aggregate = "sum",
+      # aggregate = JS("function(values, rows) {
+      #   let totalArrived_Physician_prior_year = 0
+      #   let totalNo_Show_Physician_prior_year = 0
+      #   let totalSameDay_Canceled_Physician_prior_year = 0
+      #   let totalArrived_Physician = 0
+      #   let totalNo_Show_Physician = 0
+      #   let totalSameDay_Canceled_Physician = 0
+      #   rows.forEach(function(row) {
+      #     totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
+      #     totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
+      #     totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+      #     totalArrived_Physician += row['Arrived_Physician']
+      #     totalNo_Show_Physician += row['No_Show_Physician']
+      #     totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+      #   })
+      #   return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))*110) || '-'
+      # }"),
       style = list(fontWeight = "Bold", background = "#fcdcf0"),
       format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
 
