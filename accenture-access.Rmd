@@ -605,9 +605,9 @@ no_show_mshs_ytd <- access_raw_tbl %>%
 
 
 no_show_dep <- access_raw_tbl %>%
-  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
-  # filter(PROV_TYPE == "Physician") %>%
-  # 
+  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -640,6 +640,173 @@ no_show_dep <- access_raw_tbl %>%
   rename("No_Show" = `No Show`,
          "Year" = appt_year,
           "Month" = appt_month)
+
+
+# no_show_dep <- access_raw_tbl %>%
+#   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+#   
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+#                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
+#                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+#   
+#   filter(year(CONTACT_DATE) >= prior_year) %>%
+#   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+#   filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
+#   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, appt_status) %>%
+#   summarise(total = n()) %>%
+#   collect() %>%
+#   pivot_wider(names_from = appt_status,
+#               values_from = total,
+#               values_fill = 0) %>%
+#   mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
+#          perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
+#          perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+#   rename("No_Show" = `No Show`,
+#          "Year" = appt_year,
+#           "Month" = appt_month)
+
+
+
+```
+
+
+```{r No Show Physicians, echo = FALSE, warning = FALSE, message = FALSE}
+
+no_show_mshs_baseline_physician <- access_raw_tbl %>%
+  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+  
+  filter(!is.na(SITE)) %>%
+  filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+                     "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE)) %>%
+  mutate(appt_made_year = year(APPT_MADE_DATE),
+         appt_made_month = month(APPT_MADE_DATE)) %>%
+  mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+  mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+  
+  filter(year(CONTACT_DATE) == prior_year) %>%
+  filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
+  group_by(appt_year, appt_month, appt_status) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  pivot_wider(names_from = appt_status,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
+         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  rename("Arrived_Physician" = Arrived,
+         "No_Show_Physician" = `No Show`,
+         "SameDay_Canceled_Physician" = SameDay_Canceled,
+         "perc_noShowPlus_Physician" = perc_noShowPlus,
+         "perc_noShow_Physician" = perc_noShow,
+         "perc_SameDayCanceled_Physician" = perc_SameDayCanceled,
+         "Year" = appt_year,
+         "Month" = appt_month)
+
+
+no_show_mshs_ytd_physician <- access_raw_tbl %>%
+  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+
+  filter(!is.na(SITE)) %>%
+  filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+                     "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE)) %>%
+  mutate(appt_made_year = year(APPT_MADE_DATE),
+         appt_made_month = month(APPT_MADE_DATE)) %>%
+  mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+  mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+  
+  filter(year(CONTACT_DATE) == current_year) %>%
+  filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
+  group_by(appt_year, appt_month, appt_status) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  pivot_wider(names_from = appt_status,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
+         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  rename("Arrived_Physician" = Arrived,
+         "No_Show_Physician" = `No Show`,
+         "SameDay_Canceled_Physician" = SameDay_Canceled,
+         "perc_noShowPlus_Physician" = perc_noShowPlus,
+         "perc_noShow_Physician" = perc_noShow,
+         "perc_SameDayCanceled_Physician" = perc_SameDayCanceled,
+         "Year" = appt_year,
+         "Month" = appt_month)
+
+
+no_show_dep_physician <- access_raw_tbl %>%
+  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+
+  filter(!is.na(SITE)) %>%
+  filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+                     "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE)) %>%
+  mutate(appt_made_year = year(APPT_MADE_DATE),
+         appt_made_month = month(APPT_MADE_DATE)) %>%
+  mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+  mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  
+  filter(year(CONTACT_DATE) >= prior_year) %>%
+  filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
+  group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, appt_status) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  pivot_wider(names_from = appt_status,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
+         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  rename("Arrived_Physician" = Arrived,
+         "No_Show_Physician" = `No Show`,
+         "SameDay_Canceled_Physician" = SameDay_Canceled,
+         "perc_noShowPlus_Physician" = perc_noShowPlus,
+         "perc_noShow_Physician" = perc_noShow,
+         "perc_SameDayCanceled_Physician" = perc_SameDayCanceled,
+         "Year" = appt_year,
+         "Month" = appt_month)
 
 
 # no_show_dep <- access_raw_tbl %>%
@@ -1490,6 +1657,7 @@ appt_avail_online_dep <- appt_online %>%
 ```{r Department Data Merged}
 
 department_merged <- merge(slot_util_dep, no_show_dep, all = T)
+department_merged <- merge(department_merged, no_show_dep_physician, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
 department_merged <- merge(department_merged, new_pt_waitTime_dep, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
@@ -1541,7 +1709,7 @@ department_merged <- department_merged %>%
 # 
 # 
 # require(openxlsx)
-# write.xlsx(site_merged, "Executive Scorecard Ambulatory Metrics_041425.xlsx")
+# write.xlsx(site_merged, "Executive Scorecard Ambulatory Metrics_042125.xlsx")
 
   
 ```
@@ -1567,8 +1735,7 @@ access_target <- data.frame(
   metric_name = c(rep("prov_util",12), rep("perc_noShowPlus",12), rep("perc_conversion",12)),
   accenture_target_low = c(rep(0.85,12), rep(0.10,12), rep(0.61,12)),
   accenture_target_high = c(rep(0.9,12), rep(0.07,12), rep(0.63,12)),
-  mshs_target = c(rep(0.7,12), rep(0.12,12), rep(0.60,12)),
-  mshs_budget_impact = c(rep(4000000/12,12), rep(2000000/12,12), rep(1000000/12,12))
+  mshs_target = c(rep(0.7,12), rep(0.12,12), rep(0.60,12))
 )
 
 access_target <- access_target %>%
@@ -1578,6 +1745,7 @@ access_target <- access_target %>%
 
 # Prior Year Baseline Metrics
 mshs_merged_baseline <- merge(slot_util_mshs_baseline, no_show_mshs_baseline, all = T)
+mshs_merged_baseline <- merge(mshs_merged_baseline, no_show_mshs_baseline_physician, all = T)
 mshs_merged_baseline <- merge(mshs_merged_baseline, new_pt_ratio_mshs_baseline, all = T)
 mshs_merged_baseline <- merge(mshs_merged_baseline, new_pt_waitTime_mshs_baseline, all = T)
 mshs_merged_baseline <- merge(mshs_merged_baseline, appt_avail_online_mshs_baseline, all = T)
@@ -1591,6 +1759,7 @@ mshs_merged_baseline <- mshs_merged_baseline %>%
 
 # Current YTD Metrics 
 mshs_merged_ytd <- merge(slot_util_mshs_ytd, no_show_mshs_ytd, all = T)
+mshs_merged_ytd <- merge(mshs_merged_ytd, no_show_mshs_ytd_physician, all = T)
 mshs_merged_ytd <- merge(mshs_merged_ytd, new_pt_ratio_mshs_ytd, all = T)
 mshs_merged_ytd <- merge(mshs_merged_ytd, new_pt_waitTime_mshs_ytd, all = T)
 mshs_merged_ytd <- merge(mshs_merged_ytd, appt_avail_online_mshs_ytd, all = T)
@@ -1603,16 +1772,49 @@ mshs_roi <- left_join(mshs_roi, access_target)
 
 
 
+# mshs_roi <- mshs_roi %>%
+#   mutate(prov_util_var_baseline= (prov_util - prov_util_prior_year),
+#          prov_util_actualized= ifelse((prov_util - prov_util_prior_year) >0, (prov_util - prov_util_prior_year)*avail_hours, 0),
+#          prov_util_actualized_budget= prov_util_actualized*110,
+#          perc_noShowPlus_var_target= (perc_noShowPlus - perc_noShowPlus_mshs_target),
+#          perc_conversion_var_target = (perc_conversion - perc_conversion_mshs_target)
+#          # Arrived_var_baseline = (Arrived - Arrived_prior_year)/Arrived_prior_year,
+#          ) %>%
+#   mutate(Year = current_year)
+
+
 mshs_roi <- mshs_roi %>%
-  mutate(prov_util_var_baseline= (prov_util - prov_util_prior_year),
-         prov_util_actualized= ifelse((prov_util - prov_util_prior_year) >0, (prov_util - prov_util_prior_year)*avail_hours, 0),
-         prov_util_actualized_budget= prov_util_actualized*110,
-         perc_noShowPlus_var_target= (perc_noShowPlus - perc_noShowPlus_mshs_target),
+  mutate(Arrived_Physician_var_baseline = (Arrived_Physician - Arrived_Physician_prior_year)/Arrived_Physician_prior_year,
+         prov_util_var_baseline= (prov_util - prov_util_prior_year),
+         prov_util_actualized= ifelse(prov_util_var_baseline >0, prov_util_var_baseline*Arrived_Physician, 0),
+         perc_noShowPlus_Physician_var_baseline= (perc_noShowPlus_Physician - perc_noShowPlus_Physician_prior_year),
+         perc_noShowPlus_Physician_var_target= (perc_noShowPlus_Physician - perc_noShowPlus_mshs_target),
+         perc_noShowPlus_Physician_actualized= ifelse(perc_noShowPlus_Physician_var_baseline >0, 0, 
+                                                      perc_noShowPlus_Physician_var_baseline*(Arrived_Physician + No_Show_Physician + SameDay_Canceled_Physician)*(-1)),
+         perc_noShowPlus_Physician_actualized_dollar= perc_noShowPlus_Physician_actualized*110,
          perc_conversion_var_target = (perc_conversion - perc_conversion_mshs_target)
-         # Arrived_var_baseline = (Arrived - Arrived_prior_year)/Arrived_prior_year,
          ) %>%
   mutate(Year = current_year)
+
+
+
+# Order Columns 
+col_order <- c("Month", "Year",
+               "Arrived_Physician", "Arrived_Physician_prior_year", "Arrived_Physician_var_baseline",
+               "avail_hours_prior_year", "avail_hours", "arrived_hours_prior_year", "arrived_hours", "prov_util_prior_year", "prov_util",
+               "prov_util_var_baseline", "prov_util_actualized",
+               "perc_noShowPlus_Physician_prior_year", "perc_noShowPlus_Physician",
+               "perc_noShowPlus_Physician_var_baseline", "perc_noShowPlus_mshs_target", "perc_noShowPlus_Physician_var_target",
+               "No_Show_Physician", "SameDay_Canceled_Physician",
+               "perc_noShowPlus_Physician_actualized", "perc_noShowPlus_Physician_actualized_dollar",
+               "perc_conversion_prior_year", "perc_conversion", "perc_conversion_mshs_target", "perc_conversion_var_target")
   
+remaining_cols <- as.vector(setdiff(colnames(mshs_roi), col_order))
+col_order <- c(col_order, remaining_cols)
+
+mshs_roi <- mshs_roi %>%
+  dplyr::select(col_order)
+
 ```
 
 
@@ -1822,13 +2024,19 @@ reactable(
     colGroup(name = "", columns = c("Year", "Month"),
              headerStyle = list(color = "black", fontSize = "15px"),
              sticky = "left"),
-    colGroup(name = paste0("C.1.1 - C.1.3 Estimated Impact: Provider Utilization"),
-             columns = c("avail_hours_prior_year", "avail_hours", "sched_util", "sched_util_prior_year",
-                         "prov_util_prior_year", "prov_util", "prov_util_var_baseline", "prov_util_actualized_budget"),
+    colGroup(name = paste0("Volume Completed by Physicians*"),
+             columns = c("Arrived_Physician", "Arrived_Physician_prior_year", "Arrived_Physician_var_baseline"),
+             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("C.1.1 - C.1.3 Estimated Impact: Provider Utilization*"),
+             columns = c("avail_hours_prior_year", "avail_hours", "arrived_hours", "arrived_hours_prior_year", "prov_util_prior_year", "prov_util",
+                         "prov_util_var_baseline", "prov_util_actualized"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("C.1.1 No Show & Same-Day Cancel Reduction"),
-             columns = c("perc_noShowPlus_prior_year", "perc_noShowPlus", "perc_noShowPlus_mshs_target", "perc_noShowPlus_var_target",
-                         "perc_noShowPlus_mshs_budget_impact"),
+    colGroup(name = paste0("C.1.1 No Show & Same-Day Cancel Reduction*"),
+             columns = c("perc_noShowPlus_Physician_prior_year", "perc_noShowPlus_Physician",
+                         "perc_noShowPlus_Physician_var_baseline", "No_Show_Physician", "SameDay_Canceled_Physician",
+                         "perc_noShowPlus_Physician_actualized", "perc_noShowPlus_Physician_actualized_dollar",
+                         "perc_noShowPlus_mshs_target", "perc_noShowPlus_Physician_var_target"
+                         ),
              headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
     # colGroup(name = paste0("C.1.2 Visit Volume Growth"),
     #          columns = c("Arrived_prior_year", "Arrived", "Arrived_mshs_target", "Arrived_var_target"),
@@ -1845,6 +2053,50 @@ reactable(
 
     Month = colDef(
       maxWidth = 120),
+    
+    Arrived_Physician = colDef(
+      name = "2025 YTD",
+      maxWidth = 100,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = 'sum',
+      style = list(borderLeft = "1px solid rgb(230, 230, 230)"),
+      format = colFormat(separators = TRUE, digits = 0)
+    ),
+    
+    Arrived_Physician_prior_year = colDef(
+      name = "2024 Baseline",
+      maxWidth = 100,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)
+    ),
+    
+    Arrived_Physician_var_baseline = colDef(
+      name = "Variance to 2024 Volume",
+      maxWidth = 100,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalArrived_Physician_prior_year = 0
+        let totalArrived_Physician = 0
+        rows.forEach(function(row) {
+          totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
+          totalArrived_Physician += row['Arrived_Physician']
+        })
+        return (totalArrived_Physician - totalArrived_Physician_prior_year) / (totalArrived_Physician_prior_year) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Arrived_Physician_var_baseline']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
     
     avail_hours_prior_year = colDef(
       name = "2024 Available Hours",
@@ -1864,48 +2116,57 @@ reactable(
       format = colFormat(separators = TRUE, digits = 0)
     ),
     
-    # arrived_hours = colDef(
-    #   name = "2025 Arrived Hours",
+    arrived_hours = colDef(
+      name = "2025 Arrived Hours",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)
+    ),
+    
+    arrived_hours_prior_year = colDef(
+      name = "2024 Arrived Hours",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)
+    ),
+    
+    # sched_util_prior_year = colDef(
+    #   name = "2024 Sched Util",
     #   maxWidth = 100,
     #   headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
     #   # Calculate the aggregate conversion rate as `(total-pending) / total`
-    #   aggregate = 'sum',
-    #   format = colFormat(separators = TRUE, digits = 0)
+    #   aggregate = JS("function(values, rows) {
+    #     let totalavail_hours_prior_year = 0
+    #     let totalsched_hours_prior_year = 0
+    #     rows.forEach(function(row) {
+    #       totalavail_hours_prior_year += row['avail_hours_prior_year']
+    #       totalsched_hours_prior_year += row['sched_hours_prior_year']
+    #     })
+    #     return (totalsched_hours_prior_year) / (totalavail_hours_prior_year) || '-'
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)
     # ),
-    
-    sched_util_prior_year = colDef(
-      name = "2024 Sched Util",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalavail_hours_prior_year = 0
-        let totalsched_hours_prior_year = 0
-        rows.forEach(function(row) {
-          totalavail_hours_prior_year += row['avail_hours_prior_year']
-          totalsched_hours_prior_year += row['sched_hours_prior_year']
-        })
-        return (totalsched_hours_prior_year) / (totalavail_hours_prior_year) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-
-    sched_util= colDef(
-      name = "2025 Sched Util",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalavail_hours = 0
-        let totalsched_hours = 0
-        rows.forEach(function(row) {
-          totalavail_hours += row['avail_hours']
-          totalsched_hours += row['sched_hours']
-        })
-        return (totalsched_hours) / (totalavail_hours) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
+    # 
+    # sched_util= colDef(
+    #   name = "2025 Sched Util",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   # Calculate the aggregate conversion rate as `(total-pending) / total`
+    #   aggregate = JS("function(values, rows) {
+    #     let totalavail_hours = 0
+    #     let totalsched_hours = 0
+    #     rows.forEach(function(row) {
+    #       totalavail_hours += row['avail_hours']
+    #       totalsched_hours += row['sched_hours']
+    #     })
+    #     return (totalsched_hours) / (totalavail_hours) || '-'
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)
+    # ),
     
     prov_util_prior_year = colDef(
       name = "2024 Prov Util",
@@ -1972,49 +2233,157 @@ reactable(
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
-
-     prov_util_actualized_budget = colDef(
-      name = "Estimated Revenue Impact*",
+    
+    prov_util_actualized = colDef(
+      name = "Addt'l Volume Completed",
       maxWidth = 100,
       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = 'sum',
-      format = colFormat(prefix = "$", separators = TRUE, digits = 0)
-    ),
+      aggregate = JS("function(values, rows) {
+        let totalavail_hours = 0
+        let totalarrived_hours = 0
+        let totalavail_hours_prior_year = 0
+        let totalarrived_hours_prior_year = 0
+        let totalArrived_Physician = 0
+        rows.forEach(function(row) {
+          totalavail_hours += row['avail_hours']
+          totalarrived_hours += row['arrived_hours']
+          totalavail_hours_prior_year += row['avail_hours_prior_year']
+          totalarrived_hours_prior_year += row['arrived_hours_prior_year']
+          totalArrived_Physician += row['Arrived_Physician']
+        })
+        return Math.max(0,((totalarrived_hours/totalavail_hours) - (totalarrived_hours_prior_year/totalavail_hours_prior_year))*totalArrived_Physician) || '-'
+      }"),
+      format = colFormat(separators = TRUE, digits = 0)
+      ),
 
-    perc_noShowPlus_prior_year = colDef(
+    perc_noShowPlus_Physician_prior_year = colDef(
       name = "2024 Baseline",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
-        let totalArrived_prior_year = 0
-        let totalNo_Show_prior_year = 0
-        let totalSameDay_Canceled_prior_year = 0
+        let totalArrived_Physician_prior_year = 0
+        let totalNo_Show_Physician_prior_year = 0
+        let totalSameDay_Canceled_Physician_prior_year = 0
         rows.forEach(function(row) {
-          totalArrived_prior_year += row['Arrived_prior_year']
-          totalNo_Show_prior_year += row['No_Show_prior_year']
-          totalSameDay_Canceled_prior_year += row['SameDay_Canceled_prior_year']
+          totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
+          totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
+          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
         })
-        return (totalNo_Show_prior_year + totalSameDay_Canceled_prior_year) / (totalArrived_prior_year + totalNo_Show_prior_year + totalSameDay_Canceled_prior_year) || '-'
+        return (totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
 
-    perc_noShowPlus = colDef(
+    perc_noShowPlus_Physician = colDef(
       name = "2025 YTD",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
-        let totalArrived = 0
-        let totalNo_Show = 0
-        let totalSameDay_Canceled = 0
+        let totalArrived_Physician = 0
+        let totalNo_Show_Physician = 0
+        let totalSameDay_Canceled_Physician = 0
         rows.forEach(function(row) {
-          totalArrived += row['Arrived']
-          totalNo_Show += row['No_Show']
-          totalSameDay_Canceled += row['SameDay_Canceled']
+          totalArrived_Physician += row['Arrived_Physician']
+          totalNo_Show_Physician += row['No_Show_Physician']
+          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
         })
-        return (totalNo_Show + totalSameDay_Canceled) / (totalArrived + totalNo_Show + totalSameDay_Canceled) || '-'
+        return (totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
+
+    perc_noShowPlus_Physician_var_baseline = colDef(
+      name = "Variance to 2024",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalArrived_Physician_prior_year = 0
+        let totalNo_Show_Physician_prior_year = 0
+        let totalSameDay_Canceled_Physician_prior_year = 0
+        let totalArrived_Physician = 0
+        let totalNo_Show_Physician = 0
+        let totalSameDay_Canceled_Physician = 0
+        rows.forEach(function(row) {
+          totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
+          totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
+          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+          totalArrived_Physician += row['Arrived_Physician']
+          totalNo_Show_Physician += row['No_Show_Physician']
+          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+        })
+        return ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician)) - ((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_noShowPlus_Physician_var_baseline']
+        if (value > 0) {
+          var color = '#e00000'
+        } else {
+          var color = '#008000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+    
+    No_Show_Physician = colDef(
+      name = "2025 No Shows",
+      aggregate = "sum",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(separators = TRUE, digits = 0)),
+
+    SameDay_Canceled_Physician = colDef(
+      name = "2025 Same-Day Canceled",
+      aggregate = "sum",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(separators = TRUE, digits = 0)),
+
+    perc_noShowPlus_Physician_actualized = colDef(
+      name = "Addt'l Visits Completed",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalArrived_Physician_prior_year = 0
+        let totalNo_Show_Physician_prior_year = 0
+        let totalSameDay_Canceled_Physician_prior_year = 0
+        let totalArrived_Physician = 0
+        let totalNo_Show_Physician = 0
+        let totalSameDay_Canceled_Physician = 0
+        rows.forEach(function(row) {
+          totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
+          totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
+          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+          totalArrived_Physician += row['Arrived_Physician']
+          totalNo_Show_Physician += row['No_Show_Physician']
+          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+        })
+        return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) || '-'
+      }"),
+      style = list(fontWeight = "Bold", background = "#fcdcf0"),
+      format = colFormat(separators = TRUE, digits = 0)),
+    
+    perc_noShowPlus_Physician_actualized_dollar = colDef(
+      name = "Estimated Revenue Impact**",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalArrived_Physician_prior_year = 0
+        let totalNo_Show_Physician_prior_year = 0
+        let totalSameDay_Canceled_Physician_prior_year = 0
+        let totalArrived_Physician = 0
+        let totalNo_Show_Physician = 0
+        let totalSameDay_Canceled_Physician = 0
+        rows.forEach(function(row) {
+          totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
+          totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
+          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+          totalArrived_Physician += row['Arrived_Physician']
+          totalNo_Show_Physician += row['No_Show_Physician']
+          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+        })
+        return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))*110) || '-'
+      }"),
+      style = list(fontWeight = "Bold", background = "#fcdcf0"),
+      format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
 
     perc_noShowPlus_mshs_target = colDef(
       name = "2025 Target",
@@ -2023,34 +2392,30 @@ reactable(
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       format = colFormat(percent = TRUE, digits = 1)),
 
-    perc_noShowPlus_var_target = colDef(
+    perc_noShowPlus_Physician_var_target = colDef(
       name = "Variance to 2025 Target",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
-        let totalArrived = 0
-        let totalNo_Show = 0
-        let totalSameDay_Canceled = 0
-        let totalperc_noShowPlus_mshs_target = 0
+        let totalArrived_Physician = 0
+        let totalNo_Show_Physician = 0
+        let totalSameDay_Canceled_Physician = 0
         rows.forEach(function(row) {
-          totalArrived += row['Arrived']
-          totalNo_Show += row['No_Show']
-          totalSameDay_Canceled += row['SameDay_Canceled']
-          totalperc_noShowPlus_mshs_target += row['perc_noShowPlus_mshs_target']
+          totalArrived_Physician += row['Arrived_Physician']
+          totalNo_Show_Physician += row['No_Show_Physician']
+          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
         })
-        return ((totalNo_Show + totalSameDay_Canceled) / (totalArrived + totalNo_Show + totalSameDay_Canceled))-.12 || '-'
+        return ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))-.12 || '-'
       }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['perc_noShowPlus_var_target']
-        if (value > 0) {
-          var color = '#e00000'
-        } else if (value < 0.12) {
-          var color = '#008000'
-        } else {
-          var color = '#000000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
+    style = JS("function(rowInfo) {
+      var value = rowInfo.row['perc_noShowPlus_Physician_var_target']
+      if (value > 0) {
+        var color = '#e00000'
+      } else {
+        var color = '#008000'
+      }
+      return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+    }"),
       format = colFormat(percent = TRUE, digits = 1)),
     
     perc_conversion_prior_year = colDef(
@@ -2115,97 +2480,7 @@ reactable(
         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
-    
 
-
-
-
-
-
-
-    # total_referrals = colDef(
-    #   name = "2025 Referral Volume",
-    #   aggregate = "sum",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-    # 
-    # total_referrals_prior_year = colDef(
-    #   name = "2024 Referral Volume",
-    #   aggregate = "sum",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-    # 
-    # perc_conversion_mshs_target = colDef(
-    #   name = "2025 Target",
-    #   aggregate = "max",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-    # 
-    # perc_conversion_mshs_impact = colDef(
-    #   name = "2025 Target Impact",
-    #   aggregate = "sum",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
-    # 
-    # perc_conversion_prior_year = colDef(
-    #   name = "2024 Baseline",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   aggregate = JS("function(values, rows) {
-    #     let totaltotal_referrals_prior_year = 0
-    #     let totaltotal_scheduled_prior_year = 0
-    #     rows.forEach(function(row) {
-    #       totaltotal_referrals_prior_year += row['total_referrals_prior_year']
-    #       totaltotal_scheduled_prior_year += row['total_scheduled_prior_year']
-    #     })
-    #     return (totaltotal_scheduled_prior_year) / (totaltotal_referrals_prior_year)
-    #   }"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-    # 
-    # perc_conversion = colDef(
-    #   name = "2025 YTD",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   aggregate = JS("function(values, rows) {
-    #     let totaltotal_referrals = 0
-    #     let totaltotal_scheduled = 0
-    #     rows.forEach(function(row) {
-    #       totaltotal_referrals += row['total_referrals']
-    #       totaltotal_scheduled += row['total_scheduled']
-    #     })
-    #     return (totaltotal_scheduled) / (totaltotal_referrals)
-    #   }"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-    # 
-    # conversion_actual = colDef(
-    #   name = "2025 YTD Impact",
-    #   aggregate = "sum",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
-    # 
-    # conversion_budget_actualized = colDef(
-    #   name = "2025 Target Impact Actualized",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   aggregate = JS("function(values, rows) {
-    #     let totalconversion_actual = 0
-    #     let totalperc_conversion_mshs_impact = 0
-    #     rows.forEach(function(row) {
-    #       totalconversion_actual += row['conversion_actual']
-    #       totalperc_conversion_mshs_impact += row['perc_conversion_mshs_impact']
-    #     })
-    #     return (totalconversion_actual) / (totalperc_conversion_mshs_impact) || '-'
-    #   }"),
-    #   format = colFormat(percent = TRUE, digits = 1)),
-
-    
-    
-    
 
     avail_hours = colDef(show =F),
     sched_hours = colDef(show =F),
@@ -2332,8 +2607,18 @@ reactable(
     prov_util_adj = colDef(show =F),
     avail_hours_adj_prior_year = colDef(show =F),
     sched_util_adj_prior_year = colDef(show =F),
-    prov_util_adj_prior_year = colDef(show =F)
-
+    prov_util_adj_prior_year = colDef(show =F),
+    
+    perc_noShowPlus = colDef(show =F),
+    perc_noShow_Physician = colDef(show =F),
+    perc_SameDayCanceled_Physician = colDef(show =F),
+    perc_noShowPlus_prior_year = colDef(show =F),
+    No_Show_Physician_prior_year = colDef(show =F),
+    SameDay_Canceled_Physician_prior_year = colDef(show =F),
+    perc_noShow_Physician_prior_year = colDef(show =F),
+    perc_SameDayCanceled_Physician_prior_year = colDef(show =F)
+    
+  
   ) # Close Columns
 
   ) # Close Reactable
@@ -2342,7 +2627,8 @@ reactable(
 
 ```
 <br/>
-<p style="font-size:10pt; font-style:italic">*Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)<p/><br/>
+<p style="font-size:9pt; font-style:italic">*Volume, Provider Utilization, and No Show metrics shown on this page are based on physician visits only (PROV_TYPE = "Physician").<p/><br/>
+<p style="font-size:9pt; font-style:italic">**Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Same-Day Canceled) X ($110 per Visit).<p/><br/>
 <br/>
 
 ## Metrics by Department
@@ -2848,7 +3134,15 @@ reactable(
     perc_new_lead_14days = colDef(show =F),
     avail_N_sched_N = colDef(show =F),
     avail_Y_sched_N = colDef(show =F),
-    avail_Y_sched_Y = colDef(show =F)
+    avail_Y_sched_Y = colDef(show =F),
+    
+    Arrived_Physician = colDef(show =F),
+    No_Show_Physician = colDef(show =F),
+    SameDay_Canceled_Physician = colDef(show =F),
+    perc_noShowPlus_Physician = colDef(show =F),
+    perc_noShow_Physician = colDef(show =F),
+    perc_SameDayCanceled_Physician = colDef(show =F)
+    
 
   ) # Close Columns
 
