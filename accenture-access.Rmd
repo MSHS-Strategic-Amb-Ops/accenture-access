@@ -373,11 +373,10 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 
 ```{r}
 
-# pb <- tbl(conn2, "Y_pb_trans")
-# 
+
 # fpax_tbl <- tbl(conn1, "FPAX_MERGED_DETAIL")
 # fpax <- fpax_tbl %>%
-#   group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
+#   group_by(EPIC_ENCOUNTER_CSN) %>%
 #   summarise(CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T)) %>%
 #   collect()
 # 
@@ -387,9 +386,7 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 #   group_by(PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
 #   summarise(TX_AMOUNT = sum(TX_AMOUNT, na.rm = T)) %>%
 #   collect() %>%
-#   utate(PAT_ENC_CSN_ID = as.numeric(PAT_ENC_CSN_ID), HSP_ACCOUNT_ID = as.numeric(HSP_ACCOUNT_ID))
-# 
-# fpax_tbl <- tbl(conn1, "HSP_TRANSACTIONS")
+#   mutate(PAT_ENC_CSN_ID = as.numeric(PAT_ENC_CSN_ID), HSP_ACCOUNT_ID = as.numeric(HSP_ACCOUNT_ID))
 # 
 # 
 # access <- access_raw_tbl %>%
@@ -399,14 +396,28 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 #   #                       by = c("PAT_ENC_CSN_ID" = "EPIC_ENCOUNTER_CSN"))) %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
 #   filter(year(CONTACT_DATE) >= 2021) %>%
-#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID, PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
+#   mutate(year = year(CONTACT_DATE),
+#          month = month(CONTACT_DATE)) %>%
+#   group_by(year, month, SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID, PAT_ENC_CSN_ID, HSP_ACCOUNT_ID, LOS_NAME) %>%
 #   summarise(total = n()) %>%
 #   collect()
 # 
 # 
 # access <- access %>%
-#   left_join(fpax, by = c("PAT_ENC_CSN_ID" = "EPIC_ENCOUNTER_CSN")) %>%
-#   left_join(hb_trans %>% mutate(PAT_ENC_CSN_ID = as.numeric(PAT_ENC_CSN_ID), HSP_ACCOUNT_ID = as.numeric(HSP_ACCOUNT_ID)))
+#   left_join(fpax, by = c("PAT_ENC_CSN_ID" = "EPIC_ENCOUNTER_CSN"))
+# 
+# access <- access %>%
+#   left_join(hb_trans)
+#   
+# access <- access %>%
+#   left_join(hb_trans %>% group_by(PAT_ENC_CSN_ID) %>% summarise(TX_AMOUNT2 = sum(TX_AMOUNT, na.rm = T)))
+# 
+# summary <- access %>%
+#   group_by(year, SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID, LOS_NAME) %>%
+#   summarise(total = n_distinct(PAT_ENC_CSN_ID),
+#             CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T),
+#             TX_AMOUNT = sum(TX_AMOUNT, na.rm = T),
+#             TX_AMOUNT2 = sum(TX_AMOUNT2, na.rm = T))
 
 ```
 
@@ -1768,11 +1779,11 @@ department_merged <- department_merged %>%
 
 
 access_target <- data.frame(
-  Month = c(rep(seq(1:12),3)),
-  metric_name = c(rep("prov_util",12), rep("perc_noShowPlus",12), rep("perc_conversion",12)),
-  accenture_target_low = c(rep(0.85,12), rep(0.10,12), rep(0.61,12)),
-  accenture_target_high = c(rep(0.9,12), rep(0.07,12), rep(0.63,12)),
-  mshs_target = c(rep(0.7,12), rep(0.12,12), rep(0.60,12))
+  Month = c(rep(seq(1:12),4)),
+  metric_name = c(rep("prov_util",12), rep("perc_noShowPlus",12), rep("perc_conversion",12), rep("ref_converted",12)),
+  accenture_target_low = c(rep(0.85,12), rep(0.10,12), rep(0.61,12), rep(26000,12)),
+  accenture_target_high = c(rep(0.9,12), rep(0.07,12), rep(0.63,12), rep(28000,12)),
+  mshs_target = c(rep(0.7,12), rep(0.12,12), rep(0.60,12), rep(26000,12))
 )
 
 access_target <- access_target %>%
@@ -1808,18 +1819,6 @@ mshs_roi <- merge(mshs_merged_ytd, mshs_merged_baseline, by = "Month", all = T)
 mshs_roi <- left_join(mshs_roi, access_target)
 
 
-
-# mshs_roi <- mshs_roi %>%
-#   mutate(prov_util_var_baseline= (prov_util - prov_util_prior_year),
-#          prov_util_actualized= ifelse((prov_util - prov_util_prior_year) >0, (prov_util - prov_util_prior_year)*avail_hours, 0),
-#          prov_util_actualized_budget= prov_util_actualized*110,
-#          perc_noShowPlus_var_target= (perc_noShowPlus - perc_noShowPlus_mshs_target),
-#          perc_conversion_var_target = (perc_conversion - perc_conversion_mshs_target)
-#          # Arrived_var_baseline = (Arrived - Arrived_prior_year)/Arrived_prior_year,
-#          ) %>%
-#   mutate(Year = current_year)
-
-
 mshs_roi <- mshs_roi %>%
   mutate(Arrived_Physician_var_baseline = (Arrived_Physician - Arrived_Physician_prior_year)/Arrived_Physician_prior_year,
          prov_util_var_baseline= (prov_util - prov_util_prior_year),
@@ -1829,7 +1828,9 @@ mshs_roi <- mshs_roi %>%
          perc_noShowPlus_Physician_actualized= ifelse(perc_noShowPlus_Physician_var_baseline >0, 0, 
                                                       perc_noShowPlus_Physician_var_baseline*(Arrived_Physician + No_Show_Physician + SameDay_Canceled_Physician)*(-1)),
          perc_noShowPlus_Physician_actualized_dollar= perc_noShowPlus_Physician_actualized*110,
-         perc_conversion_var_target = (perc_conversion - perc_conversion_mshs_target)
+         perc_conversion_var_baseline = (perc_conversion - perc_conversion_prior_year),
+         perc_conversion_var_target = (perc_conversion - perc_conversion_mshs_target),
+         ref_converted_var_target = (total_scheduled - ref_converted_mshs_target)
          ) %>%
   mutate(Year = current_year)
 
@@ -1844,7 +1845,8 @@ col_order <- c("Month", "Year",
                "perc_noShowPlus_Physician_var_baseline", "perc_noShowPlus_mshs_target", "perc_noShowPlus_Physician_var_target",
                "No_Show_Physician", "SameDay_Canceled_Physician",
                "perc_noShowPlus_Physician_actualized", "perc_noShowPlus_Physician_actualized_dollar",
-               "perc_conversion_prior_year", "perc_conversion", "perc_conversion_mshs_target", "perc_conversion_var_target")
+               "total_scheduled_prior_year", "total_scheduled", "ref_converted_mshs_target", "ref_converted_var_target",
+               "perc_conversion_prior_year", "perc_conversion", "perc_conversion_var_baseline")
   
 remaining_cols <- as.vector(setdiff(colnames(mshs_roi), col_order))
 col_order <- c(col_order, remaining_cols)
@@ -2079,7 +2081,8 @@ reactable(
     #          columns = c("Arrived_prior_year", "Arrived", "Arrived_mshs_target", "Arrived_var_target"),
     #          headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("C.1.3 Referral Retention"),
-             columns = c("perc_conversion_prior_year", "perc_conversion", "perc_conversion_mshs_target", "perc_conversion_var_target"),
+             columns = c("total_scheduled_prior_year", "total_scheduled", "ref_converted_mshs_target", "ref_converted_var_target",
+                         "perc_conversion_prior_year", "perc_conversion", "perc_conversion_var_baseline"),
              headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px"))
     ),
 
@@ -2465,8 +2468,47 @@ reactable(
     }"),
       format = colFormat(percent = TRUE, digits = 1)),
     
+    
+    total_scheduled = colDef(
+      name = "2025 YTD (Scheduled Volume)",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = "sum",
+      format = colFormat(separators = TRUE, digits = 0)),
+    
+    total_scheduled_prior_year = colDef(
+      name = "2024 Baseline (Scheduled Volume)",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = "sum",
+      format = colFormat(separators = TRUE, digits = 0)),
+    
+    ref_converted_mshs_target = colDef(
+      name = "2025 Target (Scheduled Volume)",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = "sum",
+      format = colFormat(separators = TRUE, digits = 0)),
+    
+    ref_converted_var_target = colDef(
+      name = "Variance to 2025 Target (Volume)",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = "sum",
+      style = JS("function(rowInfo) {
+      var value = rowInfo.row['ref_converted_var_target']
+      if (value > 0) {
+        var color = '#008000'
+      } else {
+        var color = '#e00000'
+      }
+      return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+    }"),
+      format = colFormat(separators = TRUE, digits = 0)),
+    
+    
     perc_conversion_prior_year = colDef(
-      name = "2024 Baseline",
+      name = "2024 Baseline (Conversion Rate)",
       maxWidth = 100,
       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
@@ -2481,7 +2523,7 @@ reactable(
       format = colFormat(percent = TRUE, digits = 1)),
 
     perc_conversion = colDef(
-      name = "2025 YTD",
+      name = "2025 YTD (Conversion Rate)",
       maxWidth = 100,
       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
@@ -2495,38 +2537,66 @@ reactable(
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
     
-    perc_conversion_mshs_target = colDef(
-      name = "2025 Target",
-      aggregate = "max",
-      maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(percent = TRUE, digits = 1)),
-    
-    perc_conversion_var_target = colDef(
-      name = "Variance to 2025 Target",
+    perc_conversion_var_baseline = colDef(
+      name = "Variance to 2024 (Conversion Rate)",
       maxWidth = 100,
       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = JS("function(values, rows) {
         let totaltotal_referrals = 0
         let totaltotal_scheduled = 0
+        let totaltotal_referrals_prior_year = 0
+        let totaltotal_scheduled_prior_year = 0
         rows.forEach(function(row) {
           totaltotal_referrals += row['total_referrals']
           totaltotal_scheduled += row['total_scheduled']
+          totaltotal_referrals_prior_year += row['total_referrals_prior_year']
+          totaltotal_scheduled_prior_year += row['total_scheduled_prior_year']
         })
-        return ((totaltotal_scheduled) / (totaltotal_referrals)) -.60 || '-'
+        return ((totaltotal_scheduled) / (totaltotal_referrals)) - ((totaltotal_scheduled_prior_year) / (totaltotal_referrals_prior_year)) || '-'
       }"),
       style = JS("function(rowInfo) {
-        var value = rowInfo.row['perc_conversion_var_target']
-        if (value >= 0) {
-          var color = '#008000'
-        } else if (value < 0.12) {
-          var color = '#e00000'
-        } else {
-          var color = '#000000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
+      var value = rowInfo.row['perc_conversion_var_baseline']
+      if (value > 0) {
+        var color = '#008000'
+      } else {
+        var color = '#e00000'
+      }
+      return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+    }"),
       format = colFormat(percent = TRUE, digits = 1)),
+    
+    # perc_conversion_mshs_target = colDef(
+    #   name = "2025 Target (Rate)",
+    #   aggregate = "max",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
+    # 
+    # perc_conversion_var_target = colDef(
+    #   name = "Variance to 2025 Target (Rate)",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   aggregate = JS("function(values, rows) {
+    #     let totaltotal_referrals = 0
+    #     let totaltotal_scheduled = 0
+    #     rows.forEach(function(row) {
+    #       totaltotal_referrals += row['total_referrals']
+    #       totaltotal_scheduled += row['total_scheduled']
+    #     })
+    #     return ((totaltotal_scheduled) / (totaltotal_referrals)) -.60 || '-'
+    #   }"),
+    #   style = JS("function(rowInfo) {
+    #     var value = rowInfo.row['perc_conversion_var_target']
+    #     if (value >= 0) {
+    #       var color = '#008000'
+    #     } else if (value < 0.12) {
+    #       var color = '#e00000'
+    #     } else {
+    #       var color = '#000000'
+    #     }
+    #     return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)),
 
 
     avail_hours = colDef(show =F),
@@ -2663,7 +2733,12 @@ reactable(
     No_Show_Physician_prior_year = colDef(show =F),
     SameDay_Canceled_Physician_prior_year = colDef(show =F),
     perc_noShow_Physician_prior_year = colDef(show =F),
-    perc_SameDayCanceled_Physician_prior_year = colDef(show =F)
+    perc_SameDayCanceled_Physician_prior_year = colDef(show =F),
+    
+    perc_conversion_mshs_target = colDef(show =F),
+    perc_conversion_var_target = colDef(show =F),
+    ref_converted_accenture_target_low = colDef(show =F),
+    ref_converted_accenture_target_high = colDef(show =F)
     
   
   ) # Close Columns
