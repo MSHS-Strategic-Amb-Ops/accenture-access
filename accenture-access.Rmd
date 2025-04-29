@@ -371,6 +371,33 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 ```
 
 
+```{r}
+
+# pb <- tbl(conn2, "Y_pb_trans")
+# 
+# fpax_tbl <- tbl(conn1, "FPAX_MERGED_DETAIL")
+# fpax <- fpax_tbl %>%
+#   filter(EPIC_ENCOUNTER_CSN == "100100484792") %>%
+#   collect()
+# 
+# hb_trans_conn <- tbl(conn5, dbplyr::ident_q('"CLARITY"."HSP_TRANSACTIONS"'))
+# hb_trans <- hb_trans_conn %>%
+#   filter(PAT_ENC_CSN_ID== "100082832859") %>%
+#   collect()
+# 
+# 
+# 
+# access <- access_raw_tbl %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   filter(year(CONTACT_DATE) >= 2024) %>%
+#   head(1000) %>%
+#   collect()
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID) %>%
+#   summarise(total = n())
+
+```
+
+
 ```{r Report Variables, echo = FALSE, warning = FALSE, message = FALSE}
 
 report_run_date <- Sys.Date()
@@ -1363,24 +1390,21 @@ ref_exclude <- c(
 # 
 # 
 # ref_dept <- caboodle_referrals_conn %>%
-#   left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralEpicId, InAnyWorkqueue)) %>%
+#   left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralEpicId, FirstReasonForReferral)) %>%
 #   # filter(!(ProcedureName %in% ref_exclude)) %>%
 #   filter(year(Creation_Date) >= prior_year) %>%
 #   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
-#   filter(ReceivedByDept != "*Unspecified") %>%
-#   filter(Status != "Denied") %>%
-#   filter(Class != "Outgoing") %>%
-#   mutate(start_year = year(Creation_Date),
-#          start_month = month(Creation_Date)) %>%
-#   group_by(ReceivedBySite, ReceivedBySpecialtyFromDepDim, ReceivedByDept, ReceivedByDepID, start_year, start_month, ProcedureName, InAnyWorkqueue) %>%
-#   summarise(non_converted = n_distinct(ReferralEpicId[is.na(AppointmentStatus)]),
-#             scheduled = n_distinct(ReferralEpicId[!is.na(AppointmentStatus)]),
-#             completed = n_distinct(ReferralEpicId[AppointmentStatus %in% c("Arrived", "Completed")])) %>%
+#   # filter(ReceivedByDept != "*Unspecified") %>%
+#   # filter(Status != "Denied") %>%
+#   # filter(Class != "Outgoing") %>%
+#   # mutate(start_year = year(Creation_Date),
+#   #        start_month = month(Creation_Date)) %>%
+#   # group_by(ReceivedBySite, ReceivedBySpecialtyFromDepDim, ReceivedByDept, ReceivedByDepID, start_year, start_month, ProcedureName, InAnyWorkqueue) %>%
+#   # summarise(non_converted = n_distinct(ReferralEpicId[is.na(AppointmentStatus)]),
+#   #           scheduled = n_distinct(ReferralEpicId[!is.na(AppointmentStatus)]),
+#   #           completed = n_distinct(ReferralEpicId[AppointmentStatus %in% c("Arrived", "Completed")])) %>%
 #   collect()
-# 
-# 
-# 
-# 
+
 
 
 referrals_mshs_baseline <- caboodle_referrals_conn %>%
@@ -2627,8 +2651,8 @@ reactable(
 
 ```
 <br/>
-<p style="font-size:9pt; font-style:italic">*Volume, Provider Utilization, and No Show metrics shown on this page are based on physician visits only (PROV_TYPE = "Physician").<p/><br/>
-<p style="font-size:9pt; font-style:italic">**Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Same-Day Canceled) X ($110 per Visit).<p/><br/>
+<p style="font-size:10pt; font-style:italic">*Volume, Provider Utilization, and No Show metrics shown on this page are based on physician visits only (PROV_TYPE = "Physician").<p/>
+<p style="font-size:10pt; font-style:italic">**Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Same-Day Canceled) X ($110 per Visit).<p/><br/>
 <br/>
 
 ## Metrics by Department
