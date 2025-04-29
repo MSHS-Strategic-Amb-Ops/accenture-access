@@ -386,11 +386,12 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 #   filter(!is.na(PAT_ENC_CSN_ID)) %>%
 #   group_by(PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
 #   summarise(TX_AMOUNT = sum(TX_AMOUNT, na.rm = T)) %>%
-#   collect()
+#   collect() %>%
+#   utate(PAT_ENC_CSN_ID = as.numeric(PAT_ENC_CSN_ID), HSP_ACCOUNT_ID = as.numeric(HSP_ACCOUNT_ID))
 # 
 # fpax_tbl <- tbl(conn1, "HSP_TRANSACTIONS")
 # 
-#   
+# 
 # access <- access_raw_tbl %>%
 #   # left_join(fpax_tbl %>%
 #   #             group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
@@ -401,6 +402,11 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 #   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID, PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
 #   summarise(total = n()) %>%
 #   collect()
+# 
+# 
+# access <- access %>%
+#   left_join(fpax, by = c("PAT_ENC_CSN_ID" = "EPIC_ENCOUNTER_CSN")) %>%
+#   left_join(hb_trans %>% mutate(PAT_ENC_CSN_ID = as.numeric(PAT_ENC_CSN_ID), HSP_ACCOUNT_ID = as.numeric(HSP_ACCOUNT_ID)))
 
 ```
 
@@ -2266,7 +2272,7 @@ reactable(
     ),
     
     prov_util_actualized = colDef(
-      name = "Addt'l Visits Completed",
+      name = "Addt'l Visits Completed**",
       maxWidth = 100,
       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
@@ -2377,7 +2383,7 @@ reactable(
       format = colFormat(separators = TRUE, digits = 0)),
 
     perc_noShowPlus_Physician_actualized = colDef(
-      name = "Addt'l Visits Completed",
+      name = "Addt'l Visits Completed**",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = "sum",
@@ -2402,7 +2408,7 @@ reactable(
       format = colFormat(separators = TRUE, digits = 0)),
     
     perc_noShowPlus_Physician_actualized_dollar = colDef(
-      name = "Estimated Revenue Impact**",
+      name = "Estimated Revenue Impact***",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       aggregate = "sum",
