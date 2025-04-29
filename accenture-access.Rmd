@@ -373,27 +373,34 @@ clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 
 ```{r}
 
-# pb <- tbl(conn2, "Y_pb_trans")
-# 
-# fpax_tbl <- tbl(conn1, "FPAX_MERGED_DETAIL")
-# fpax <- fpax_tbl %>%
-#   filter(EPIC_ENCOUNTER_CSN == "100100484792") %>%
-#   collect()
-# 
-# hb_trans_conn <- tbl(conn5, dbplyr::ident_q('"CLARITY"."HSP_TRANSACTIONS"'))
-# hb_trans <- hb_trans_conn %>%
-#   filter(PAT_ENC_CSN_ID== "100082832859") %>%
-#   collect()
-# 
-# 
-# 
-# access <- access_raw_tbl %>%
-#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-#   filter(year(CONTACT_DATE) >= 2024) %>%
-#   head(1000) %>%
-#   collect()
-#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID) %>%
-#   summarise(total = n())
+pb <- tbl(conn2, "Y_pb_trans")
+
+fpax_tbl <- tbl(conn1, "FPAX_MERGED_DETAIL")
+fpax <- fpax_tbl %>%
+  group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
+  summarise(CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T)) %>%
+  collect()
+
+hb_trans_conn <- tbl(conn5, dbplyr::ident_q('"CLARITY"."HSP_TRANSACTIONS"'))
+hb_trans <- hb_trans_conn %>%
+  filter(!is.na(PAT_ENC_CSN_ID)) %>%
+  group_by(PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
+  summarise(TX_AMOUNT = sum(TX_AMOUNT, na.rm = T)) %>%
+  collect()
+
+fpax_tbl <- tbl(conn1, "HSP_TRANSACTIONS")
+
+  
+access <- access_raw_tbl %>%
+  # left_join(fpax_tbl %>%
+  #             group_by(EPIC_ENCOUNTER_CSN, CALC_CHARGE_AMT) %>%
+  #             summarise(CALC_CHARGE_AMT = sum(CALC_CHARGE_AMT, na.rm = T),
+  #                       by = c("PAT_ENC_CSN_ID" = "EPIC_ENCOUNTER_CSN"))) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(year(CONTACT_DATE) >= 2021) %>%
+  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, FINANCIAL_DIVISION_ID, FINANCIAL_DIVISION, PROV_NAME_WID, PAT_ENC_CSN_ID, HSP_ACCOUNT_ID) %>%
+  summarise(total = n()) %>%
+  collect()
 
 ```
 
@@ -2263,13 +2270,14 @@ reactable(
       maxWidth = 100,
       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalprov_util_actualized = 0
-        rows.forEach(function(row) {
-          totalprov_util_actualized += row['prov_util_actualized']
-        })
-        return Math.max(0,prov_util_actualized) || '-'
-      }"),
+      aggregate = "sum",
+      # aggregate = JS("function(values, rows) {
+      #   let totalprov_util_actualized = 0
+      #   rows.forEach(function(row) {
+      #     totalprov_util_actualized += row['prov_util_actualized']
+      #   })
+      #   return Math.max(0,prov_util_actualized) || '-'
+      # }"),
       # aggregate = JS("function(values, rows) {
       #   let totalavail_hours = 0
       #   let totalarrived_hours = 0
@@ -2661,7 +2669,8 @@ reactable(
 ```
 <br/>
 <p style="font-size:10pt; font-style:italic">*Volume, Provider Utilization, and No Show metrics shown on this page are based on physician visits only (PROV_TYPE = "Physician").<p/>
-<p style="font-size:10pt; font-style:italic">**Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Same-Day Canceled) X ($110 per Visit).<p/><br/>
+<p style="font-size:10pt; font-style:italic">**Additional Visits Completed based on sum of monthly total, not YTD calculated.<p/>
+<p style="font-size:10pt; font-style:italic">***Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Same-Day Canceled) X ($110 per Visit); sum of monthly estimated revenue impact, not YTD calculated.<p/><br/>
 <br/>
 
 ## Metrics by Department
