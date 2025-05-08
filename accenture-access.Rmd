@@ -337,10 +337,16 @@ availability_raw_tbl <- tbl(conn2, "V_AVAILABILITY")
 block_raw_tbl <- tbl(conn2, "AVAIL_BLOCK")
 block_name_tbl <- tbl(conn2, "ZC_APPT_BLOCK")
 orders_raw_tbl <- tbl(conn2, "ORDER_PROC")
-coverage_tbl <- tbl(conn2, "V_PAT_ENC_COVERAGE")
+coverage_tbl <- clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
 clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
 slot_view_tbl <- tbl(conn3, in_schema("OAO_PRODUCTION", "AMBULATORY_SLOT_TABLE"))
 temp_slot_tbl <- tbl(conn4, "AMBULATORY_SLOT_TABLE_TEMP")
+
+dep_mapping_tbl <- tbl(conn2, "CLARITY_DEP")
+dep_mapping <- dep_mapping_tbl %>%
+  dplyr::select(DEPARTMENT_ID, SPECIALTY) %>%
+  collect()
+
 
 radiology_dep_mapping_tbl <- tbl(conn1, "RADIOLOGY_DEP_MAPPING")
 
@@ -348,16 +354,12 @@ radiology_dep_mapping_tbl <- tbl(conn1, "RADIOLOGY_DEP_MAPPING")
 # f_sched_appt_tbl <- tbl(conn5, dbplyr::ident_q('"CLARITY"."F_SCHED_APPT"'))
 clarity_dep_conn <- tbl(conn5, dbplyr::ident_q('"Clarity"."CLARITY_DEP"'))
 
-
 referrals_conn <- tbl(conn5, dbplyr::ident_q('"MS_SOLUTIONS_DEV"."y_s2_referrals_tmp"'))
 caboodle_referrals_conn <- tbl(conn5, dbplyr::ident_q('"CABOODLE"."ReferralsDataView"'))
 caboodle_referralFact_conn <- tbl(conn5, dbplyr::ident_q('"CABOODLE"."ReferralFact"'))
 patient_conn <- tbl(conn5, dbplyr::ident_q('"CABOODLE"."PatientDim"'))
 department_conn <- tbl(conn5, dbplyr::ident_q('"CABOODLE"."DepartmentDim"'))
 
-department <- department_conn %>%
-  dplyr::select(DepartmentEpicId, PostalCode) %>%
-  collect()
 
 clarity_referrals_tbl <- tbl(conn5, dbplyr::ident_q('"Clarity"."REFERRAL"'))
 
@@ -445,14 +447,24 @@ current_year_month <- paste0(current_year,"-",current_month)
 #   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP",
 #                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
 #   mutate(appt_year = year(CONTACT_DATE)) %>%
-#   filter(appt_year >= 2024) %>%
+#   filter(appt_year >= 2025) %>%
+#   filter(month(CONTACT_DATE) <= 4) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_TYPE, PRC_NAME, PRC_ID, DERIVED_STATUS_DESC) %>%
+#   summarise(total = n()) %>%
+#   collect()
+# 
+# access <- access_raw %>%
+#   pivot_wider(names_from = DERIVED_STATUS_DESC,
+#               values_from = total, 
+#               values_fill = 0)
+#   
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
 #   group_by(appt_year, VISIT_GROUP_NUM, PRC_NAME, APPT_LENGTH) %>%
 #   summarise(total = n()) %>%
 #   collect()
 # 
 # require(openxlsx)
-# write.xlsx(access_raw, "Volume by Appt Length.xlsx")
+# write.xlsx(access, "No Show by Visit Type.xlsx")
 
 # access <- access_raw_tbl %>%
 #   filter(PAT_ENC_CSN_ID == 100176727351) %>%
@@ -508,10 +520,7 @@ slot_util <- slot_view_tbl %>%
          slot_month = month(SLOT_DATE)) %>%
   filter(slot_year >= prior_year) %>%
   filter(SLOT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
-                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
-                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-  group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROVIDER, PROV_ID, slot_year, slot_month) %>%
+  group_by(CAMPUS, DEPARTMENT_ID, DEPARTMENT, PROVIDER, PROV_ID, slot_year, slot_month) %>%
   summarise(AVAILABLE_MINS= sum(AVAILABLE_MINS, na.rm = T),
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
@@ -519,7 +528,17 @@ slot_util <- slot_view_tbl %>%
   filter(sched_util > 0.3 & sched_util <= 1.5) %>%
   collect() %>%
   left_join(clarity_ser) %>%
-  left_join(clarity_ser_2)
+  left_join(clarity_ser_2) %>%
+  left_join(dep_mapping) %>%
+  mutate(SPECIALTY_GRP = ifelse(SPECIALTY %in%
+                                  c("Adolescent Medicine", "Community and Preventive Medicine",
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  rename(DEPT_SPECIALTY_NAME = SPECIALTY) %>%
+  relocate(DEPT_SPECIALTY_NAME, .before = DEPARTMENT) %>%
+  relocate(DEPARTMENT_ID, .after = DEPARTMENT) %>%
+  relocate(SPECIALTY_GRP, .before = DEPT_SPECIALTY_NAME) 
+  
+  
 
 
 
@@ -553,28 +572,26 @@ slot_util_mshs_ytd <- slot_util %>%
 
 slot_util_dep <- slot_util %>%
   filter(PROV_TYPE == "Physician") %>%
-  group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, slot_year, slot_month) %>%
+  group_by(CAMPUS, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT, DEPARTMENT_ID, slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
   mutate(sched_util = sched_hours/avail_hours,
          prov_util = arrived_hours/avail_hours) %>%
   rename("SITE" = CAMPUS,
-         "DEPT_SPECIALTY_NAME" = CAMPUS_SPECIALTY,
          "DEPARTMENT_NAME" = DEPARTMENT,
          "Year" = slot_year,
          "Month" = slot_month)
 
 
 slot_util_prov <- slot_util %>%
-  group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROV_ID, PROV_TYPE, PROVIDER, slot_year, slot_month) %>%
+  group_by(CAMPUS, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT, DEPARTMENT_ID, PROV_ID, PROV_TYPE, PROVIDER, slot_year, slot_month) %>%
   summarise(avail_hours = sum(AVAILABLE_MINS, na.rm = T)/60,
             sched_hours = sum(SCHEDULED_MINS, na.rm = T)/60,
             arrived_hours = sum(ARRIVED_MINS, na.rm = T)/60) %>%
   mutate(sched_util = sched_hours/avail_hours,
          prov_util = arrived_hours/avail_hours) %>%
   rename("SITE" = CAMPUS,
-         "DEPT_SPECIALTY_NAME" = CAMPUS_SPECIALTY,
          "DEPARTMENT_NAME" = DEPARTMENT,
          "Year" = slot_year,
          "Month" = slot_month)
@@ -1716,7 +1733,8 @@ department_merged <- merge(department_merged, referrals_dep, all = T)
 referrals_dep_check <- department_merged %>%
   group_by(DEPARTMENT_ID, Year, Month) %>%
   summarise(total_referrals = sum(total_referrals, na.rm = T)) %>%
-  left_join(referrals_dep %>% group_by(DEPARTMENT_ID, Year, Month) %>% summarise(total_referrals_org = sum(total_referrals, na.rm = T)))
+  left_join(referrals_dep %>% group_by(DEPARTMENT_ID, Year, Month) %>% summarise(total_referrals_org = sum(total_referrals, na.rm = T))) %>%
+  mutate(check = total_referrals - total_referrals_org)
 
 
 department_merged <- department_merged %>%
