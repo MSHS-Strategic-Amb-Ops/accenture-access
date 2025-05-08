@@ -640,7 +640,7 @@ no_show_mshs_baseline <- access_raw_tbl %>%
 no_show_mshs_ytd <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
-  # 
+
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -673,8 +673,8 @@ no_show_mshs_ytd <- access_raw_tbl %>%
 
 
 no_show_dep <- access_raw_tbl %>%
-  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
-  filter(PROV_TYPE == "Physician") %>%
+  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  # filter(PROV_TYPE == "Physician") %>%
 
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
@@ -2823,7 +2823,7 @@ reactable(
     colGroup(name = "", columns = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME"),
              headerStyle = list(color = "black", fontSize = "15px"),
              sticky = "left"),
-    colGroup(name = paste0("Template Utilization (Physicians Only)"),
+    colGroup(name = paste0("Template Utilization (Physicians Only)*"),
              columns = c("avail_hours", "sched_util", "prov_util"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("No Show"),
