@@ -2936,7 +2936,35 @@ reactable(
       }"),
       format = colFormat(percent = TRUE, digits = 1)
     ),
-    
+
+perc_noShow = colDef(
+      name = "No Show Rate",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalArrived = 0
+        let totalNo_Show = 0
+        rows.forEach(function(row) {
+          totalArrived += row['Arrived']
+          totalNo_Show += row['No_Show']
+        })
+        return (totalNo_Show) / (totalArrived + totalNo_Show) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_noShow']
+        if (value >= 0.12) {
+          var color = '#e00000'
+        } else if (value < 0.12) {
+          var color = '#008000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
     perc_new_lead_14days = colDef(
       name = "% New Scheduled within 14 Days",
       maxWidth = 100,
