@@ -3267,7 +3267,6 @@ perc_noShow = colDef(
     Arrived = colDef(show =F),
     SameDay_Canceled = colDef(show =F),
     No_Show = colDef(show =F),
-    perc_noShow = colDef(show =F),
     perc_SameDayCanceled = colDef(show =F),
     NEW_LOS = colDef(show =F),
     appts_arrived = colDef(show =F),
