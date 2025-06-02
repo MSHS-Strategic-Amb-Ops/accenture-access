@@ -329,6 +329,8 @@ conn5 <- dbConnect(odbc(),
                     PWD = "Apple_Bees456$",
                     Port = 1433)
 
+
+
 # Import Slot Availability Data ------------------------------------------------
 slot_raw_tbl <- tbl(conn2, "Y_DM_BOOKED_FILLED_RATE")
 access_raw_tbl <- tbl(conn2, "MV_DM_PATIENT_ACCESS")
@@ -339,6 +341,10 @@ block_name_tbl <- tbl(conn2, "ZC_APPT_BLOCK")
 orders_raw_tbl <- tbl(conn2, "ORDER_PROC")
 coverage_tbl <- clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
 clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
+visit_type_tbl <- tbl(conn2, "CL_PRC_VT_GROUPS")
+visit_type_mapping_tbl <- tbl(conn2, "ZC_VISIT_TYPE_GRP")
+
+
 slot_view_tbl <- tbl(conn3, in_schema("OAO_PRODUCTION", "AMBULATORY_SLOT_TABLE"))
 temp_slot_tbl <- tbl(conn4, "AMBULATORY_SLOT_TABLE_TEMP")
 
@@ -349,6 +355,7 @@ dep_mapping <- dep_mapping_tbl %>%
 
 
 radiology_dep_mapping_tbl <- tbl(conn1, "RADIOLOGY_DEP_MAPPING")
+
 
 # access_raw_tbl <- tbl(conn5, in_schema("CLARITY", "MV_DM_PATIENT_ACCESS"))
 # f_sched_appt_tbl <- tbl(conn5, dbplyr::ident_q('"CLARITY"."F_SCHED_APPT"'))
@@ -369,6 +376,7 @@ clarity_ser_2_tbl <- tbl(conn2, "CLARITY_SER_2")
 
 clarity_ser <- clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE) %>% collect()
 clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
+
 
 ```
 
@@ -511,6 +519,8 @@ current_year_month <- paste0(current_year,"-",current_month)
 
 ```{r Template Utilization, echo = FALSE, warning = FALSE, message = FALSE}
 
+
+
 slot_util <- slot_view_tbl %>%
   filter(!is.na(CAMPUS)) %>%
   filter(CAMPUS %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP",
@@ -600,6 +610,167 @@ slot_util_prov <- slot_util %>%
 ```
 
 
+
+
+```{r}
+
+# clarity_ser <- clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE) %>% collect()
+# 
+# no_show_old <- access_raw_tbl %>%
+#   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+#   
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#    filter(!(is.na(APPT_CANC_DTTM) & APPT_STATUS_NAME == "Canceled")) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+#  
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   
+#   filter(year(CONTACT_DATE) == 2025) %>%
+#   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+#   filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
+#   group_by(appt_year, appt_month, appt_status, PROV_ID) %>%
+#   summarise(total = n()) %>%
+#   collect() %>%
+#   left_join(clarity_ser) %>%
+#   filter(PROV_TYPE == "Physician") %>%
+#   group_by(appt_year, appt_month, appt_status, PROV_TYPE) %>%
+#   summarise(total = sum(total, na.rm = T)) %>%
+#   pivot_wider(names_from = appt_status,
+#               values_from = total,
+#               values_fill = 0) %>%
+#   mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
+#          perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
+#          perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+#   rename("No_Show" = `No Show`,
+#          "Year" = appt_year,
+#          "Month" = appt_month)
+# 
+# 
+# no_show_new <- access_raw_tbl %>%
+#   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+#   
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#    filter(!(is.na(APPT_CANC_DTTM) & APPT_STATUS_NAME == "Canceled")) %>%
+#   mutate(appt_status = ifelse(APPT_STATUS_NAME %in% c("Arrived", "Checked In", "Checked Out", "Completed"), "Completed", APPT_STATUS_NAME)) %>%
+#   mutate(appt_status = ifelse(appt_status == "Canceled" & CANCEL_LEAD_HOURS <24 & CANCEL_INITIATOR == "PATIENT", "Late_Canceled", appt_status)) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   filter(year(CONTACT_DATE) == 2025) %>%
+#   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+#   filter(appt_status %in% c("No Show","Late_Canceled","Completed","Left without seen")) %>%
+#   group_by(appt_year, appt_month, appt_status, PROV_ID) %>%
+#   summarise(total = n()) %>%
+#   collect() %>%
+#   left_join(clarity_ser) %>%
+#   filter(PROV_TYPE == "Physician") %>%
+#   group_by(appt_year, appt_month, appt_status, PROV_TYPE) %>%
+#   summarise(total = sum(total, na.rm = T)) %>%
+#   pivot_wider(names_from = appt_status,
+#               values_from = total,
+#               values_fill = 0) %>%
+#   mutate(perc_noShowPlus = (`No Show` + Late_Canceled)/(Completed + `Left without seen` + `No Show` + Late_Canceled),
+#          perc_noShow = (`No Show`)/(Completed + `Left without seen` + `No Show`)) %>%
+#   rename("No_Show" = `No Show`,
+#          "Year" = appt_year,
+#          "Month" = appt_month)
+# 
+# 
+# 
+# status_comparison <-  access_raw_tbl %>%
+#   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#    filter(!(is.na(APPT_CANC_DTTM) & APPT_STATUS_NAME == "Canceled")) %>%
+#   mutate(appt_status = ifelse(APPT_STATUS_NAME == "Canceled" & CANCEL_LEAD_HOURS <24 & CANCEL_INITIATOR == "PATIENT", "Late_Canceled", APPT_STATUS_NAME)) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   filter(year(CONTACT_DATE) == 2025) %>%
+#   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+#   group_by(APPT_STATUS_NAME, DERIVED_STATUS_DESC, PROV_ID) %>%
+#   summarise(total = n()) %>%
+#   collect() %>%
+#   left_join(clarity_ser) %>%
+#   filter(PROV_TYPE == "Physician") %>%
+#   group_by(APPT_STATUS_NAME, DERIVED_STATUS_DESC , PROV_TYPE) %>%
+#   summarise(total = sum(total, na.rm = T))
+# 
+# 
+# cancel_dist <- access_raw_tbl %>%
+#   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+#   
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#    filter(!(is.na(APPT_CANC_DTTM) & APPT_STATUS_NAME == "Canceled")) %>%
+#   mutate(appt_status_new = ifelse(APPT_STATUS_NAME == "Canceled" & CANCEL_LEAD_HOURS <24 & CANCEL_INITIATOR == "PATIENT", "Late_Canceled", APPT_STATUS_NAME)) %>%
+#   mutate(appt_status_old = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+# 
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   filter(year(CONTACT_DATE) == 2025) %>%
+#   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+#   filter(APPT_STATUS_NAME == "Canceled") %>%
+#   filter(CANCEL_LEAD_HOURS <24) %>%
+#   group_by(SITE, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, PAT_ENC_CSN_ID, cancel_lead_days, CANCEL_LEAD_HOURS, APPT_DTTM, APPT_CANC_DTTM, CANCEL_INITIATOR, 
+#            APPT_STATUS_NAME, DERIVED_STATUS_DESC, appt_status_new, appt_status_old, PROV_ID) %>%
+#   summarise(total = n()) %>%
+#   collect() %>%
+#   left_join(clarity_ser) %>%
+#   filter(PROV_TYPE == "Physician") %>%
+#   group_by(SITE, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, PAT_ENC_CSN_ID, cancel_lead_days, CANCEL_LEAD_HOURS, APPT_DTTM, APPT_CANC_DTTM, CANCEL_INITIATOR, 
+#            APPT_STATUS_NAME, DERIVED_STATUS_DESC, appt_status_new, appt_status_old, PROV_TYPE) %>%
+#   summarise(total = sum(total, na.rm = T))
+# 
+# 
+# data_list <- list("No Show Old" = no_show_old,
+#                   "No Show New" = no_show_new,
+#                   "Status Comparison" = status_comparison,
+#                   "Cancellation" = cancel_dist)
+# 
+# require(openxlsx)
+# write.xlsx(data_list, "No Show Change Impact Physicians.xlsx")
+
+```
+
+
 ```{r No Show, echo = FALSE, warning = FALSE, message = FALSE}
 
 no_show_mshs_baseline <- access_raw_tbl %>%
@@ -610,63 +781,76 @@ no_show_mshs_baseline <- access_raw_tbl %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   mutate(appt_made_year = year(APPT_MADE_DATE),
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  
   filter(year(CONTACT_DATE) == prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-  group_by(appt_year, appt_month, appt_status) %>%
+  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
+  group_by(appt_year, appt_month, DERIVED_STATUS_DESC) %>%
   summarise(total = n()) %>%
   collect() %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
+         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
   rename("No_Show" = `No Show`,
          "Year" = appt_year,
          "Month" = appt_month)
+  
+  
+  
 
 
 no_show_mshs_ytd <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
-
+  
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   mutate(appt_made_year = year(APPT_MADE_DATE),
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  
   filter(year(CONTACT_DATE) == current_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-  group_by(appt_year, appt_month, appt_status) %>%
+  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
+  group_by(appt_year, appt_month, DERIVED_STATUS_DESC) %>%
   summarise(total = n()) %>%
   collect() %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
+         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
   rename("No_Show" = `No Show`,
          "Year" = appt_year,
          "Month" = appt_month)
@@ -675,80 +859,43 @@ no_show_mshs_ytd <- access_raw_tbl %>%
 no_show_dep <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
-
+  
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   mutate(appt_made_year = year(APPT_MADE_DATE),
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
-                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
-                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-  
   filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-  group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, appt_status) %>%
+  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
+  group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, DERIVED_STATUS_DESC) %>%
   summarise(total = n()) %>%
   collect() %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
+         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
   rename("No_Show" = `No Show`,
          "Year" = appt_year,
-          "Month" = appt_month)
+         "Month" = appt_month)
 
-
-# no_show_dep <- access_raw_tbl %>%
-#   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
-#   # filter(PROV_TYPE == "Physician") %>%
-#   
-#   filter(!is.na(SITE)) %>%
-#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
-#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
-#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
-#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
-#   mutate(appt_year = year(CONTACT_DATE),
-#          appt_month = month(CONTACT_DATE)) %>%
-#   mutate(appt_made_year = year(APPT_MADE_DATE),
-#          appt_made_month = month(APPT_MADE_DATE)) %>%
-#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
-#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-#   mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
-#                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
-#                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-#   
-#   filter(year(CONTACT_DATE) >= prior_year) %>%
-#   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-#   filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-#   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, appt_status) %>%
-#   summarise(total = n()) %>%
-#   collect() %>%
-#   pivot_wider(names_from = appt_status,
-#               values_from = total,
-#               values_fill = 0) %>%
-#   mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
-#          perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
-#          perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
-#   rename("No_Show" = `No Show`,
-#          "Year" = appt_year,
-#           "Month" = appt_month)
-
-
-
+  
 ```
 
 
@@ -762,34 +909,40 @@ no_show_mshs_baseline_physician <- access_raw_tbl %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   mutate(appt_made_year = year(APPT_MADE_DATE),
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  
   filter(year(CONTACT_DATE) == prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-  group_by(appt_year, appt_month, appt_status) %>%
+  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
+  group_by(appt_year, appt_month, DERIVED_STATUS_DESC) %>%
   summarise(total = n()) %>%
   collect() %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
+         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
   rename("Arrived_Physician" = Arrived,
          "No_Show_Physician" = `No Show`,
-         "SameDay_Canceled_Physician" = SameDay_Canceled,
+         "Canceled_Physician" = Canceled,
+         "Rescheduled_Physician" = Rescheduled,
+         "perc_noShowPlusPlus_Physician" = perc_noShowPlusPlus,
          "perc_noShowPlus_Physician" = perc_noShowPlus,
          "perc_noShow_Physician" = perc_noShow,
-         "perc_SameDayCanceled_Physician" = perc_SameDayCanceled,
          "Year" = appt_year,
          "Month" = appt_month)
 
@@ -797,85 +950,94 @@ no_show_mshs_baseline_physician <- access_raw_tbl %>%
 no_show_mshs_ytd_physician <- access_raw_tbl %>%
   left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   filter(PROV_TYPE == "Physician") %>%
-
+  
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   mutate(appt_made_year = year(APPT_MADE_DATE),
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  
   filter(year(CONTACT_DATE) == current_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-  group_by(appt_year, appt_month, appt_status) %>%
+  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
+  group_by(appt_year, appt_month, DERIVED_STATUS_DESC) %>%
   summarise(total = n()) %>%
   collect() %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
+         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
   rename("Arrived_Physician" = Arrived,
          "No_Show_Physician" = `No Show`,
-         "SameDay_Canceled_Physician" = SameDay_Canceled,
+         "Canceled_Physician" = Canceled,
+         "Rescheduled_Physician" = Rescheduled,
+         "perc_noShowPlusPlus_Physician" = perc_noShowPlusPlus,
          "perc_noShowPlus_Physician" = perc_noShowPlus,
          "perc_noShow_Physician" = perc_noShow,
-         "perc_SameDayCanceled_Physician" = perc_SameDayCanceled,
          "Year" = appt_year,
          "Month" = appt_month)
+
 
 
 no_show_dep_physician <- access_raw_tbl %>%
   left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   filter(PROV_TYPE == "Physician") %>%
-
+  
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   mutate(appt_made_year = year(APPT_MADE_DATE),
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
-                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
-                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-  
   filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  filter(appt_status %in% c("No Show","SameDay_Canceled","Arrived")) %>%
-  group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, appt_status) %>%
+  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
+  group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, DERIVED_STATUS_DESC) %>%
   summarise(total = n()) %>%
   collect() %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(perc_noShowPlus = (`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_noShow = (`No Show`)/(Arrived + `No Show` + SameDay_Canceled),
-         perc_SameDayCanceled = (SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled)) %>%
+  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
+         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
   rename("Arrived_Physician" = Arrived,
          "No_Show_Physician" = `No Show`,
-         "SameDay_Canceled_Physician" = SameDay_Canceled,
+         "Canceled_Physician" = Canceled,
+         "Rescheduled_Physician" = Rescheduled,
+         "perc_noShowPlusPlus_Physician" = perc_noShowPlusPlus,
          "perc_noShowPlus_Physician" = perc_noShowPlus,
          "perc_noShow_Physician" = perc_noShow,
-         "perc_SameDayCanceled_Physician" = perc_SameDayCanceled,
          "Year" = appt_year,
          "Month" = appt_month)
-
 
 # no_show_dep <- access_raw_tbl %>%
 #   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
@@ -887,7 +1049,7 @@ no_show_dep_physician <- access_raw_tbl %>%
 #   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
 #   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
 #   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "Late_Cancel", DERIVED_STATUS_DESC)) %>%
 #   mutate(appt_year = year(CONTACT_DATE),
 #          appt_month = month(CONTACT_DATE)) %>%
 #   mutate(appt_made_year = year(APPT_MADE_DATE),
@@ -1420,31 +1582,17 @@ ref_exclude <- c(
 ```{r Referrals- Caboodle ReferralsDataView, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-# ref_baseline <- caboodle_referrals_conn %>%
-#   head(10) %>%
-#   collect()
-# 
-# 
-# ref_fact <- caboodle_referralFact_conn %>%
-#   head(10) %>%
-#   collect()
-# 
-# 
-# ref_dept <- caboodle_referrals_conn %>%
-#   left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralEpicId, FirstReasonForReferral)) %>%
-#   # filter(!(ProcedureName %in% ref_exclude)) %>%
-#   filter(year(Creation_Date) >= prior_year) %>%
-#   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
-#   # filter(ReceivedByDept != "*Unspecified") %>%
-#   # filter(Status != "Denied") %>%
-#   # filter(Class != "Outgoing") %>%
-#   # mutate(start_year = year(Creation_Date),
-#   #        start_month = month(Creation_Date)) %>%
-#   # group_by(ReceivedBySite, ReceivedBySpecialtyFromDepDim, ReceivedByDept, ReceivedByDepID, start_year, start_month, ProcedureName, InAnyWorkqueue) %>%
-#   # summarise(non_converted = n_distinct(ReferralEpicId[is.na(AppointmentStatus)]),
-#   #           scheduled = n_distinct(ReferralEpicId[!is.na(AppointmentStatus)]),
-#   #           completed = n_distinct(ReferralEpicId[AppointmentStatus %in% c("Arrived", "Completed")])) %>%
-#   collect()
+ref_dept <- caboodle_referrals_conn %>%
+  filter(ReceivedByDept %LIKE% "%BREAST%") %>%
+  # filter(!(ProcedureName %in% ref_exclude)) %>%
+  # filter(ReceivedByDept != "*Unspecified") %>%
+  # filter(Status != "Denied") %>%
+  # filter(Class != "Outgoing") %>%
+  mutate(start_year = year(Creation_Date),
+         start_month = month(Creation_Date)) %>%
+  filter(start_year >= 2024) %>%
+  collect() %>%
+    mutate(exclude = ifelse(ProcedureName %in% ref_exclude, "Y", "N")) 
 
 
 
@@ -1719,6 +1867,184 @@ appt_avail_online_dep <- appt_online %>%
 ```
 
 
+
+```{r Online Appointments Physicians, echo = FALSE, warning = FALSE, message = FALSE}
+
+
+# visit_type <- visit_type_tbl %>%
+#   left_join(visit_type_mapping_tbl %>%
+#               dplyr::select(VISIT_TYPE_GRP_C, TITLE),
+#             by = c("VISIT_TYPE_GROUP_C" = "VISIT_TYPE_GRP_C")) %>%
+#   collect() 
+# 
+# visit_type_clean <- visit_type %>%
+#   mutate(visit_type = 1) %>%
+#   dplyr::select(PRC_ID, TITLE, visit_type) %>%
+#   distinct() %>%
+#   pivot_wider(names_from = TITLE,
+#               values_from = visit_type,
+#               values_fill = 0)
+# 
+# 
+# appt_online_physician <- access_raw_tbl %>%
+#   left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   filter(is.na(PROV_TYPE) | PROV_TYPE == "Resource") %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+# 
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP",
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in%
+#                                   c("Adolescent Medicine", "Community and Preventive Medicine",
+#                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+# 
+#   filter(year(APPT_MADE_DATE) >= prior_year) %>%
+#   filter(APPT_MADE_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+#   left_join(f_sched_appt_tbl %>%
+#               dplyr::select(PAT_ENC_CSN_ID, COULD_DIR_SCHED_C, COULD_OPEN_SCHED_C, COULD_TKT_SCHED_C, APPT_SCHED_SOURCE_C, PAT_ONLINE_YN)) %>%
+#   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_made_year, appt_made_month, PROV_NAME_WID,
+#            VISIT_PROV_STAFF_RESOURCE_C, PROV_TYPE, VISIT_METHOD, PRC_NAME, PRC_ID, VISIT_TYPE,
+#            COULD_DIR_SCHED_C, COULD_OPEN_SCHED_C, COULD_TKT_SCHED_C, APPT_SCHED_SOURCE_C, APPT_SCHED_SOURCE, DERIVED_STATUS_DESC, SCHED_METHOD, PAT_ONLINE_YN, WALK_IN_YN) %>%
+#   summarise(total = n()) %>%
+#   collect()
+# 
+# 
+# 
+# appt_online_physician <- appt_online_physician %>%
+#   filter(!is.na(COULD_DIR_SCHED_C) | !is.na(COULD_OPEN_SCHED_C) | !is.na(COULD_TKT_SCHED_C)) %>%
+#   filter(!(COULD_DIR_SCHED_C %in% c(13) & COULD_OPEN_SCHED_C %in% c(13) & COULD_TKT_SCHED_C %in% c(13))) %>%
+#   mutate(COULD_DIR_SCHED = ifelse(COULD_DIR_SCHED_C %in% c(11), 1, 0),
+#          COULD_OPEN_SCHED = ifelse(COULD_OPEN_SCHED_C %in% c(11), 1, 0),
+#          COULD_TKT_SCHED = ifelse(COULD_TKT_SCHED_C %in% c(11), 1, 0)) %>%
+#   mutate(avail_online_exclude = ifelse(APPT_SCHED_SOURCE_C %in% c(27, 28, 33, 34), "Y", "N")) %>%
+#   # mutate(avail_online = ifelse((COULD_DIR_SCHED + COULD_OPEN_SCHED + COULD_TKT_SCHED)>0, "Y", "N")) %>%
+#   # mutate(sched_online = ifelse((avail_online == "Y" & WALK_IN_YN == "N" & PAT_ONLINE_YN == "Y"), "Y", "N")) %>%
+#   mutate(avail_online = ifelse((COULD_DIR_SCHED + COULD_OPEN_SCHED + COULD_TKT_SCHED)>0, "avail_Y", "avail_N")) %>%
+#   mutate(sched_online = ifelse((avail_online == "avail_Y" & WALK_IN_YN == "N" & PAT_ONLINE_YN == "Y"), "sched_Y", "sched_N"))
+# 
+# 
+# 
+# appt_avail_online_mshs_baseline_physician <- appt_online_physician %>%
+#   filter(appt_made_year == prior_year) %>%
+#   filter(avail_online_exclude == "N") %>%
+#   group_by(appt_made_year, appt_made_month, avail_online, sched_online) %>%
+#   summarise(appts_sched = sum(total, na.rm = T))  %>%
+#   pivot_wider(names_from = c("avail_online", "sched_online"),
+#               values_from = appts_sched,
+#               values_fill = 0) %>%
+#   mutate(perc_avail_online = (avail_Y_sched_N + avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y),
+#          perc_sched_online = (avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y)) %>%
+#          # perc_sched_online = (avail_Y_sched_Y) / (avail_Y_sched_Y + avail_Y_sched_N)) %>%
+#   rename("Year" = appt_made_year,
+#          "Month" = appt_made_month)
+# 
+# 
+# appt_avail_online_mshs_ytd_physician <- appt_online_physician %>%
+#   filter(appt_made_year == current_year) %>%
+#   filter(avail_online_exclude == "N") %>%
+#   group_by(appt_made_year, appt_made_month, avail_online, sched_online) %>%
+#   summarise(appts_sched = sum(total, na.rm = T))  %>%
+#   pivot_wider(names_from = c("avail_online", "sched_online"),
+#               values_from = appts_sched,
+#               values_fill = 0) %>%
+#   mutate(perc_avail_online = (avail_Y_sched_N + avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y),
+#          perc_sched_online = (avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y)) %>%
+#          # perc_sched_online = (avail_Y_sched_Y) / (avail_Y_sched_Y + avail_Y_sched_N)) %>%
+#   rename("Year" = appt_made_year,
+#          "Month" = appt_made_month)
+# 
+# 
+# appt_avail_online_dep_physician <- appt_online_physician %>%
+#   filter(avail_online_exclude == "N") %>%
+#   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_made_year, appt_made_month, avail_online, sched_online) %>%
+#   summarise(appts_sched = sum(total, na.rm = T))  %>%
+#   pivot_wider(names_from = c("avail_online", "sched_online"),
+#               values_from = appts_sched,
+#               values_fill = 0) %>%
+#   mutate(perc_avail_online = (avail_Y_sched_N + avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y),
+#          perc_sched_online = (avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y)) %>%
+#          # perc_sched_online = (avail_Y_sched_Y) / (avail_Y_sched_Y + avail_Y_sched_N)) %>%
+#   rename("Year" = appt_made_year,
+#          "Month" = appt_made_month)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# appt_avail_online_physician_summary <- appt_online_physician %>%
+#   filter(avail_online_exclude == "N") %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_TYPE, VISIT_PROV_STAFF_RESOURCE_C, PROV_NAME_WID, PRC_NAME, PRC_ID, VISIT_METHOD, VISIT_TYPE, 
+#            avail_online_exclude, appt_made_year, appt_made_month, avail_online, sched_online) %>%
+#   summarise(appts_sched = sum(total, na.rm = T))  %>%
+#   pivot_wider(names_from = c("avail_online", "sched_online"),
+#               values_from = appts_sched,
+#               values_fill = 0) %>%
+#   mutate(perc_avail_online = (avail_Y_sched_N + avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y),
+#          perc_sched_online = (avail_Y_sched_Y) / (avail_N_sched_N + avail_Y_sched_N + avail_Y_sched_Y)) %>%
+#          # perc_sched_online = (avail_Y_sched_Y) / (avail_Y_sched_Y + avail_Y_sched_N)) %>%
+#   rename("Year" = appt_made_year,
+#          "Month" = appt_made_month)
+# 
+# appt_avail_online_physician_summary <- appt_avail_online_physician_summary %>%
+#   left_join(visit_type_clean)
+# 
+# 
+# 
+# 
+# prov_type_summary <- access_raw_tbl %>%
+#   left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   # filter(PROV_TYPE == "Physician") %>%
+# 
+#   filter(!is.na(SITE)) %>%
+#   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP",
+#                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   mutate(appt_made_year = year(APPT_MADE_DATE),
+#          appt_made_month = month(APPT_MADE_DATE)) %>%
+#   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+#   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+#   mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in%
+#                                   c("Adolescent Medicine", "Community and Preventive Medicine",
+#                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+# 
+#   filter(year(APPT_MADE_DATE) >= prior_year) %>%
+#   filter(APPT_MADE_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+#   left_join(f_sched_appt_tbl %>%
+#               dplyr::select(PAT_ENC_CSN_ID, COULD_DIR_SCHED_C, COULD_OPEN_SCHED_C, COULD_TKT_SCHED_C, APPT_SCHED_SOURCE_C, PAT_ONLINE_YN)) %>%
+#   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID,
+#            VISIT_PROV_STAFF_RESOURCE_C, PROV_TYPE, VISIT_METHOD, PRC_NAME, PRC_ID,
+#            PROV_NAME_WID) %>%
+#   summarise(total = n()) %>%
+#   collect()
+# 
+# 
+# 
+# require(openxlsx)
+# write.xlsx(appt_avail_online_physician_summary, "Online Appts Audit_052025.xlsx")
+# write.xlsx(appt_avail_online_physician_summary, "Online Appts Audit_Prov Type_052025.xlsx")
+```
+
+
 ```{r Department Data Merged}
 
 department_merged <- merge(slot_util_dep, no_show_dep, all = T)
@@ -1844,7 +2170,7 @@ mshs_roi <- mshs_roi %>%
          perc_noShowPlus_Physician_var_baseline= (perc_noShowPlus_Physician - perc_noShowPlus_Physician_prior_year),
          perc_noShowPlus_Physician_var_target= (perc_noShowPlus_Physician - perc_noShowPlus_mshs_target),
          perc_noShowPlus_Physician_actualized= ifelse(perc_noShowPlus_Physician_var_baseline >0, 0, 
-                                                      perc_noShowPlus_Physician_var_baseline*(Arrived_Physician + No_Show_Physician + SameDay_Canceled_Physician)*(-1)),
+                                                      perc_noShowPlus_Physician_var_baseline*(Arrived_Physician + No_Show_Physician + Canceled_Physician)*(-1)),
          perc_noShowPlus_Physician_actualized_dollar= perc_noShowPlus_Physician_actualized*110,
          perc_conversion_var_baseline = (perc_conversion - perc_conversion_prior_year),
          perc_conversion_var_target = (perc_conversion - perc_conversion_mshs_target),
@@ -1861,7 +2187,7 @@ col_order <- c("Month", "Year",
                "prov_util_var_baseline", "prov_util_actualized",
                "perc_noShowPlus_Physician_prior_year", "perc_noShowPlus_Physician",
                "perc_noShowPlus_Physician_var_baseline", "perc_noShowPlus_mshs_target", "perc_noShowPlus_Physician_var_target",
-               "No_Show_Physician", "SameDay_Canceled_Physician",
+               "No_Show_Physician", "Canceled_Physician",
                "perc_noShowPlus_Physician_actualized", "perc_noShowPlus_Physician_actualized_dollar",
                "total_scheduled_prior_year", "total_scheduled", "ref_converted_mshs_target", "ref_converted_var_target",
                "perc_conversion_prior_year", "perc_conversion", "perc_conversion_var_baseline")
@@ -2088,9 +2414,9 @@ reactable(
              columns = c("avail_hours_prior_year", "avail_hours", "arrived_hours", "arrived_hours_prior_year", "prov_util_prior_year", "prov_util",
                          "prov_util_var_baseline", "prov_util_actualized"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("C.1.1 No Show & Same-Day Cancel Reduction*"),
+    colGroup(name = paste0("C.1.1 No Show & Late Cancel Reduction*"),
              columns = c("perc_noShowPlus_Physician_prior_year", "perc_noShowPlus_Physician",
-                         "perc_noShowPlus_Physician_var_baseline", "No_Show_Physician", "SameDay_Canceled_Physician",
+                         "perc_noShowPlus_Physician_var_baseline", "No_Show_Physician", "Canceled_Physician",
                          "perc_noShowPlus_Physician_actualized", "perc_noShowPlus_Physician_actualized_dollar",
                          "perc_noShowPlus_mshs_target", "perc_noShowPlus_Physician_var_target"
                          ),
@@ -2330,13 +2656,13 @@ reactable(
       aggregate = JS("function(values, rows) {
         let totalArrived_Physician_prior_year = 0
         let totalNo_Show_Physician_prior_year = 0
-        let totalSameDay_Canceled_Physician_prior_year = 0
+        let totalCanceled_Physician_prior_year = 0
         rows.forEach(function(row) {
           totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
           totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
-          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+          totalCanceled_Physician_prior_year += row['Canceled_Physician_prior_year']
         })
-        return (totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) || '-'
+        return (totalNo_Show_Physician_prior_year + totalCanceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalCanceled_Physician_prior_year) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
 
@@ -2347,13 +2673,13 @@ reactable(
       aggregate = JS("function(values, rows) {
         let totalArrived_Physician = 0
         let totalNo_Show_Physician = 0
-        let totalSameDay_Canceled_Physician = 0
+        let totalCanceled_Physician = 0
         rows.forEach(function(row) {
           totalArrived_Physician += row['Arrived_Physician']
           totalNo_Show_Physician += row['No_Show_Physician']
-          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+          totalCanceled_Physician += row['Canceled_Physician']
         })
-        return (totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician) || '-'
+        return (totalNo_Show_Physician + totalCanceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalCanceled_Physician) || '-'
       }"),
       format = colFormat(percent = TRUE, digits = 1)),
 
@@ -2364,19 +2690,19 @@ reactable(
       aggregate = JS("function(values, rows) {
         let totalArrived_Physician_prior_year = 0
         let totalNo_Show_Physician_prior_year = 0
-        let totalSameDay_Canceled_Physician_prior_year = 0
+        let totalCanceled_Physician_prior_year = 0
         let totalArrived_Physician = 0
         let totalNo_Show_Physician = 0
-        let totalSameDay_Canceled_Physician = 0
+        let totalCanceled_Physician = 0
         rows.forEach(function(row) {
           totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
           totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
-          totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+          totalCanceled_Physician_prior_year += row['Canceled_Physician_prior_year']
           totalArrived_Physician += row['Arrived_Physician']
           totalNo_Show_Physician += row['No_Show_Physician']
-          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+          totalCanceled_Physician += row['Canceled_Physician']
         })
-        return ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician)) - ((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) || '-'
+        return ((totalNo_Show_Physician + totalCanceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalCanceled_Physician)) - ((totalNo_Show_Physician_prior_year + totalCanceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalCanceled_Physician_prior_year)) || '-'
       }"),
       style = JS("function(rowInfo) {
         var value = rowInfo.row['perc_noShowPlus_Physician_var_baseline']
@@ -2396,8 +2722,8 @@ reactable(
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       format = colFormat(separators = TRUE, digits = 0)),
 
-    SameDay_Canceled_Physician = colDef(
-      name = "2025 Same-Day Canceled",
+    Canceled_Physician = colDef(
+      name = "2025 Late Canceled",
       aggregate = "sum",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
@@ -2411,19 +2737,19 @@ reactable(
       # aggregate = JS("function(values, rows) {
       #   let totalArrived_Physician_prior_year = 0
       #   let totalNo_Show_Physician_prior_year = 0
-      #   let totalSameDay_Canceled_Physician_prior_year = 0
+      #   let totalLate_Cancel_Physician_prior_year = 0
       #   let totalArrived_Physician = 0
       #   let totalNo_Show_Physician = 0
-      #   let totalSameDay_Canceled_Physician = 0
+      #   let totalLate_Cancel_Physician = 0
       #   rows.forEach(function(row) {
       #     totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
       #     totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
-      #     totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+      #     totalLate_Cancel_Physician_prior_year += row['Late_Cancel_Physician_prior_year']
       #     totalArrived_Physician += row['Arrived_Physician']
       #     totalNo_Show_Physician += row['No_Show_Physician']
-      #     totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+      #     totalLate_Cancel_Physician += row['Late_Cancel_Physician']
       #   })
-      #   return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) || '-'
+      #   return Math.max(0,((((totalNo_Show_Physician_prior_year + totalLate_Cancel_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalLate_Cancel_Physician_prior_year)) - ((totalNo_Show_Physician + totalLate_Cancel_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalLate_Cancel_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalLate_Cancel_Physician))) || '-'
       # }"),
       style = list(fontWeight = "Bold", background = "#fcdcf0"),
       format = colFormat(separators = TRUE, digits = 0)),
@@ -2436,19 +2762,19 @@ reactable(
       # aggregate = JS("function(values, rows) {
       #   let totalArrived_Physician_prior_year = 0
       #   let totalNo_Show_Physician_prior_year = 0
-      #   let totalSameDay_Canceled_Physician_prior_year = 0
+      #   let totalLate_Cancel_Physician_prior_year = 0
       #   let totalArrived_Physician = 0
       #   let totalNo_Show_Physician = 0
-      #   let totalSameDay_Canceled_Physician = 0
+      #   let totalLate_Cancel_Physician = 0
       #   rows.forEach(function(row) {
       #     totalArrived_Physician_prior_year += row['Arrived_Physician_prior_year']
       #     totalNo_Show_Physician_prior_year += row['No_Show_Physician_prior_year']
-      #     totalSameDay_Canceled_Physician_prior_year += row['SameDay_Canceled_Physician_prior_year']
+      #     totalLate_Cancel_Physician_prior_year += row['Late_Cancel_Physician_prior_year']
       #     totalArrived_Physician += row['Arrived_Physician']
       #     totalNo_Show_Physician += row['No_Show_Physician']
-      #     totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+      #     totalLate_Cancel_Physician += row['Late_Cancel_Physician']
       #   })
-      #   return Math.max(0,((((totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalSameDay_Canceled_Physician_prior_year)) - ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))*110) || '-'
+      #   return Math.max(0,((((totalNo_Show_Physician_prior_year + totalLate_Cancel_Physician_prior_year) / (totalArrived_Physician_prior_year + totalNo_Show_Physician_prior_year + totalLate_Cancel_Physician_prior_year)) - ((totalNo_Show_Physician + totalLate_Cancel_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalLate_Cancel_Physician))) * (totalArrived_Physician + totalNo_Show_Physician + totalLate_Cancel_Physician))*110) || '-'
       # }"),
       style = list(fontWeight = "Bold", background = "#fcdcf0"),
       format = colFormat(prefix = "$", separators = TRUE, digits = 0)),
@@ -2467,13 +2793,13 @@ reactable(
       aggregate = JS("function(values, rows) {
         let totalArrived_Physician = 0
         let totalNo_Show_Physician = 0
-        let totalSameDay_Canceled_Physician = 0
+        let totalCanceled_Physician = 0
         rows.forEach(function(row) {
           totalArrived_Physician += row['Arrived_Physician']
           totalNo_Show_Physician += row['No_Show_Physician']
-          totalSameDay_Canceled_Physician += row['SameDay_Canceled_Physician']
+          totalCanceled_Physician += row['Canceled_Physician']
         })
-        return ((totalNo_Show_Physician + totalSameDay_Canceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalSameDay_Canceled_Physician))-.12 || '-'
+        return ((totalNo_Show_Physician + totalCanceled_Physician) / (totalArrived_Physician + totalNo_Show_Physician + totalCanceled_Physician))-.12 || '-'
       }"),
     style = JS("function(rowInfo) {
       var value = rowInfo.row['perc_noShowPlus_Physician_var_target']
@@ -2623,7 +2949,8 @@ reactable(
     sched_util = colDef(show =F),
     prov_util = colDef(show =F),
     Arrived = colDef(show =F),
-    SameDay_Canceled = colDef(show =F),
+    Canceled = colDef(show =F),
+    Rescheduled = colDef(show =F),
     No_Show = colDef(show =F),
     perc_noShow = colDef(show =F),
     perc_SameDayCanceled = colDef(show =F),
@@ -2675,7 +3002,7 @@ reactable(
     sched_util_prior_year = colDef(show =F),
     prov_util_prior_year = colDef(show =F),
     Arrived_prior_year = colDef(show =F),
-    SameDay_Canceled_prior_year = colDef(show =F),
+    Late_Cancel_prior_year = colDef(show =F),
     No_Show_prior_year = colDef(show =F),
     perc_noShow_prior_year = colDef(show =F),
     perc_SameDayCanceled_prior_year = colDef(show =F),
@@ -2749,14 +3076,25 @@ reactable(
     perc_SameDayCanceled_Physician = colDef(show =F),
     perc_noShowPlus_prior_year = colDef(show =F),
     No_Show_Physician_prior_year = colDef(show =F),
-    SameDay_Canceled_Physician_prior_year = colDef(show =F),
+    Canceled_Physician_prior_year = colDef(show =F),
     perc_noShow_Physician_prior_year = colDef(show =F),
     perc_SameDayCanceled_Physician_prior_year = colDef(show =F),
     
     perc_conversion_mshs_target = colDef(show =F),
     perc_conversion_var_target = colDef(show =F),
     ref_converted_accenture_target_low = colDef(show =F),
-    ref_converted_accenture_target_high = colDef(show =F)
+    ref_converted_accenture_target_high = colDef(show =F),
+    
+    perc_noShowPlusPlus = colDef(show =F),
+    perc_noShowPlusPlus_Physician = colDef(show =F),
+    Rescheduled_Physician = colDef(show =F),
+    
+    perc_noShowPlusPlus_prior_year = colDef(show =F),
+    perc_noShowPlusPlus_Physician_prior_year = colDef(show =F),
+    Rescheduled_Physician_prior_year = colDef(show =F),
+    
+    Canceled_prior_year = colDef(show =F),
+    Rescheduled_prior_year = colDef(show =F)
     
   
   ) # Close Columns
@@ -2769,7 +3107,7 @@ reactable(
 <br/>
 <p style="font-size:10pt; font-style:italic">*Volume, Provider Utilization, and No Show metrics shown on this page are based on physician visits only (PROV_TYPE = "Physician").<p/>
 <p style="font-size:10pt; font-style:italic">**Additional Visits Completed based on sum of monthly total, not YTD calculated.<p/>
-<p style="font-size:10pt; font-style:italic">***Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Same-Day Canceled) X ($110 per Visit); sum of monthly estimated revenue impact, not YTD calculated.<p/><br/>
+<p style="font-size:10pt; font-style:italic">***Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Late Canceled) X ($110 per Visit); sum of monthly estimated revenue impact, not YTD calculated.<p/><br/>
 <br/>
 
 ## Metrics by Department
@@ -2796,7 +3134,7 @@ htmltools::browsable(
     tags$hr("aria-hidden" = "true"),
     
 reactable(
-  department_merged,
+  department_merged, 
   elementId = "access-metrics",
   # elementId = "referral-vol-download-table",
   style = list(fontFamily = 'Calibri',
@@ -2827,7 +3165,7 @@ reactable(
              columns = c("avail_hours", "sched_util", "prov_util"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("No Show"),
-             columns = c("perc_noShowPlus"),
+             columns = c("perc_noShow", "perc_noShowPlus", "perc_noShowPlusPlus"),
              headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
     colGroup(name = paste0("New Patient Access"),
              columns = c("perc_new_lead_14days", "perc_new_los"),
@@ -2906,22 +3244,82 @@ reactable(
       }"),
       format = colFormat(percent = TRUE, digits = 0)
     ),
-
-    perc_noShowPlus = colDef(
-      name = "No Show Plus Rate",
+    
+    perc_noShow = colDef(
+      name = "No Show Rate",
       maxWidth = 100,
       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
       aggregate = JS("function(values, rows) {
         let totalArrived = 0
         let totalNo_Show = 0
-        let totalSameDay_Canceled = 0
         rows.forEach(function(row) {
           totalArrived += row['Arrived']
           totalNo_Show += row['No_Show']
-          totalSameDay_Canceled += row['SameDay_Canceled']
         })
-        return (totalNo_Show + totalSameDay_Canceled) / (totalArrived + totalNo_Show + totalSameDay_Canceled) || '-'
+        return (totalNo_Show) / (totalArrived + totalNo_Show) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_noShow']
+        if (value >= 0.12) {
+          var color = '#e00000'
+        } else if (value < 0.12) {
+          var color = '#008000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_noShowPlus = colDef(
+      name = "No Show + Late Canceled Rate",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalArrived = 0
+        let totalNo_Show = 0
+        let totalCanceled = 0
+        rows.forEach(function(row) {
+          totalArrived += row['Arrived']
+          totalNo_Show += row['No_Show']
+          totalCanceled += row['Canceled']
+        })
+        return (totalNo_Show + totalCanceled) / (totalArrived + totalNo_Show + totalCanceled) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_noShowPlus']
+        if (value >= 0.12) {
+          var color = '#e00000'
+        } else if (value < 0.12) {
+          var color = '#008000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+    
+    perc_noShowPlusPlus = colDef(
+      name = "No Show + Late Canceled + Late Rescheduled Rate",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalArrived = 0
+        let totalNo_Show = 0
+        let totalCanceled = 0
+        let totalRescheduled = 0
+        rows.forEach(function(row) {
+          totalArrived += row['Arrived']
+          totalNo_Show += row['No_Show']
+          totalCanceled += row['Canceled']
+          totalRescheduled += row['Rescheduled']
+        })
+        return (totalNo_Show + totalCanceled + totalRescheduled) / (totalArrived + totalNo_Show + totalCanceled + totalRescheduled) || '-'
       }"),
       style = JS("function(rowInfo) {
         var value = rowInfo.row['perc_noShowPlus']
@@ -3237,9 +3635,9 @@ reactable(
     sched_hours = colDef(show =F),
     arrived_hours = colDef(show =F),
     Arrived = colDef(show =F),
-    SameDay_Canceled = colDef(show =F),
+    Rescheduled = colDef(show =F),
+    Canceled = colDef(show =F),
     No_Show = colDef(show =F),
-    perc_noShow = colDef(show =F),
     perc_SameDayCanceled = colDef(show =F),
     NEW_LOS = colDef(show =F),
     appts_arrived = colDef(show =F),
@@ -3277,12 +3675,14 @@ reactable(
     avail_Y_sched_N = colDef(show =F),
     avail_Y_sched_Y = colDef(show =F),
     
+    
     Arrived_Physician = colDef(show =F),
+    Rescheduled_Physician = colDef(show =F),
     No_Show_Physician = colDef(show =F),
-    SameDay_Canceled_Physician = colDef(show =F),
+    Canceled_Physician = colDef(show =F),
+    perc_noShowPlusPlus_Physician = colDef(show =F),
     perc_noShowPlus_Physician = colDef(show =F),
-    perc_noShow_Physician = colDef(show =F),
-    perc_SameDayCanceled_Physician = colDef(show =F)
+    perc_noShow_Physician = colDef(show =F)
     
 
   ) # Close Columns
