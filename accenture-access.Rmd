@@ -1085,9 +1085,9 @@ no_show_dep_physician <- access_raw_tbl %>%
 
 
 new_pt_ratio_mshs_baseline <- access_raw_tbl %>%
-  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
-  # filter(PROV_TYPE == "Physician") %>%
-  # 
+  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -1120,9 +1120,9 @@ new_pt_ratio_mshs_baseline <- access_raw_tbl %>%
 
 
 new_pt_ratio_mshs_ytd <- access_raw_tbl %>%
-  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
-  # filter(PROV_TYPE == "Physician") %>%
-  # 
+  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -1155,9 +1155,9 @@ new_pt_ratio_mshs_ytd <- access_raw_tbl %>%
 
 
 new_pt_ratio_dep <- access_raw_tbl %>%
-  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
-  # filter(PROV_TYPE == "Physician") %>%
-  # 
+  left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -3353,7 +3353,7 @@ reactable(
     ),
     
     perc_new_los = colDef(
-      name = "New Patient Ratio*",
+      name = "Physician New Patient Ratio*",
       maxWidth = 100,
       headerStyle = list(background = "#9E1A6D", color = "white", fontWeight = "Bold", fontSize = "14px"),
       # Calculate the aggregate conversion rate as `(total-pending) / total`
@@ -3693,7 +3693,7 @@ reactable(
 
 ```
 <br/>
-<p style="font-size:10pt; font-style:italic">*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)<p/>
+<p style="font-size:10pt; font-style:italic">*New Patient is defined by level of service; Physician New Patient Ratio is calculated based on (Total New Patients Arrived for Physicians) / (Total Patients Arrived for Physicians)<p/>
 <p style="font-size:10pt; font-style:italic">*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care<p/>
 
 <br/>
