@@ -1402,8 +1402,8 @@ payer_mix_dep2 <- payer_mix_dep %>%
                            ifelse(str_detect(DEPARTMENT_NAME, "325 W 15TH"), "Chelsea", "")))
 
 
-require(openxlsx)
-write.xlsx(payer_mix_dep2, "EPIC Payer Mix_070825.xlsx")
+# require(openxlsx)
+# write.xlsx(payer_mix_dep2, "EPIC Payer Mix_070825.xlsx")
 ```
 
 
