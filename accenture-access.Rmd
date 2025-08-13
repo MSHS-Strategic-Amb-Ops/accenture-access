@@ -359,7 +359,7 @@ clarity_ser_2_tbl_loc <- tbl(conn1, "CLARITY_SER_2")
 
 dep_mapping_tbl_loc <- tbl(conn1, "CLARITY_DEP")
 
-slot_data_tbl <- tbl(conn1, "SLOT_DATA1")
+slot_data_tbl <- tbl(conn1, "SLOT_DATA2")
 
 #slot_view_tbl <- tbl(conn3, in_schema("OAO_PRODUCTION", "AMBULATORY_SLOT_TABLE"))
 
