@@ -551,8 +551,8 @@ grp_mapping <- data.frame("SITE" = c("NETWORK", "OTHER", "MSH-MSDFP", "MSUS",
 
 
 slot_merged <- slot_data_tbl %>%
-  # filter(DEPARTMENT_ID == "8827031") %>%
-  # filter(PROV_ID == "1410756") %>%
+  # left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
+  # filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
               dplyr::select(PROV_ID, GENERIC_YN)) %>%
   filter(GENERIC_YN == "N") %>%
@@ -576,7 +576,33 @@ slot_merged <- slot_data_tbl %>%
               rename("DEPT_SPECIALTY_NAME" = SPECIALTY))
 
 
-slot_util_mshs_baseline <- slot_merged %>%
+slot_merged_physician <- slot_data_tbl %>%
+  left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
+  filter(PROV_TYPE == "Physician") %>%
+  left_join(clarity_ser_2_tbl_loc %>% 
+              dplyr::select(PROV_ID, GENERIC_YN)) %>%
+  filter(GENERIC_YN == "N") %>%
+  left_join(dep_mapping_tbl_loc %>%
+              mutate(SITE = case_when(RPT_GRP_SEVNTEEN_C == 2 ~ "NETWORK", 
+                                      RPT_GRP_SEVNTEEN_C == 3 ~ "OTHER", 
+                                      RPT_GRP_SEVNTEEN_C == 4 ~ "MSH-MSDFP", 
+                                      RPT_GRP_SEVNTEEN_C == 6 ~ "MSUS",
+                                      RPT_GRP_SEVNTEEN_C == 7 ~ "MSDMG", 
+                                      RPT_GRP_SEVNTEEN_C == 8 ~ "MSBI",
+                                      RPT_GRP_SEVNTEEN_C == 9 ~ "MSW", 
+                                      RPT_GRP_SEVNTEEN_C == 10 ~ "MSHS", 
+                                      RPT_GRP_SEVNTEEN_C == 11 ~ "MSM", 
+                                      RPT_GRP_SEVNTEEN_C == 12 ~ "MSH- AMBULATORY CARE",
+                                      RPT_GRP_SEVNTEEN_C == 13 ~ "NYEE", 
+                                      RPT_GRP_SEVNTEEN_C == 14 ~ "MS NOW", 
+                                      RPT_GRP_SEVNTEEN_C == 15 ~ "MSQ", 
+                                      RPT_GRP_SEVNTEEN_C == 19 ~ "MSSN", 
+                                      RPT_GRP_SEVNTEEN_C == 38 ~ "MSB")) %>%
+              dplyr::select(SITE, SPECIALTY, DEPARTMENT_ID) %>%
+              rename("DEPT_SPECIALTY_NAME" = SPECIALTY))
+
+
+slot_util_mshs_baseline <- slot_merged_physician %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -603,7 +629,7 @@ slot_util_mshs_baseline <- slot_merged %>%
          "Month" = slot_month)
 
 
-slot_util_mshs_ytd <- slot_merged %>%
+slot_util_mshs_ytd <- slot_merged_physician %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
