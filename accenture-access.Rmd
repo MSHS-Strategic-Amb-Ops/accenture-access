@@ -551,7 +551,7 @@ grp_mapping <- data.frame("SITE" = c("NETWORK", "OTHER", "MSH-MSDFP", "MSUS",
 
 
 slot_merged <- slot_data_tbl %>%
-  # left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
+  left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
               dplyr::select(PROV_ID, GENERIC_YN)) %>%
@@ -610,20 +610,15 @@ slot_util_mshs_baseline <- slot_merged_physician %>%
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
-  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, PROV_NM_WID, slot_date) %>%
-  summarise(avail_min = sum(REG_AVAIL_MIN, na.rm = T),
-            sched_min = sum(SCHED_MIN, na.rm = T),
-            arrived_min = sum(ARRIVED_MIN, na.rm = T)) %>%
-  mutate(prov_util = case_when(avail_min == 0 | is.na(avail_min) ~ 0, TRUE ~ arrived_min/avail_min)) %>%
-  filter(prov_util >=0.35 & prov_util <=2.0) %>%
-  mutate(slot_year = year(slot_date),
-         slot_month = month(slot_date)) %>%
+  mutate(slot_year = year(SLOT_BEGIN_TIME),
+         slot_month = month(SLOT_BEGIN_TIME)) %>%
   filter(year(slot_date) == prior_year) %>%
   group_by(slot_year, slot_month) %>%
-  summarise(avail_hour = sum(avail_min, na.rm = T)/60,
-            sched_hour = sum(sched_min, na.rm = T)/60,
-            arrived_hour = sum(arrived_min, na.rm = T)/60) %>%
-  mutate(prov_util = arrived_hour/avail_hour) %>%
+  summarise(avail_hour = sum(REG_AVAIL_MIN, na.rm = T)/60,
+            sched_hour = sum(SCHED_MIN, na.rm = T)/60,
+            arrived_hour = sum(ARRIVED_MIN, na.rm = T)/60) %>%
+  mutate(prov_util = case_when(avail_hour == 0 | is.na(avail_hour) ~ 0, TRUE ~ arrived_hour/avail_hour)) %>%
+  filter(prov_util >=0.35 & prov_util <=2.0) %>%
   collect() %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
@@ -637,20 +632,15 @@ slot_util_mshs_ytd <- slot_merged_physician %>%
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
-  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, PROV_NM_WID, slot_date) %>%
-  summarise(avail_min = sum(REG_AVAIL_MIN, na.rm = T),
-            sched_min = sum(SCHED_MIN, na.rm = T),
-            arrived_min = sum(ARRIVED_MIN, na.rm = T)) %>%
-  mutate(prov_util = case_when(avail_min == 0 | is.na(avail_min) ~ 0, TRUE ~ arrived_min/avail_min)) %>%
-  filter(prov_util >=0.35 & prov_util <=2.0) %>%
-  mutate(slot_year = year(slot_date),
-         slot_month = month(slot_date)) %>%
-  filter(year(slot_date) == prior_year) %>%
+  mutate(slot_year = year(SLOT_BEGIN_TIME),
+         slot_month = month(SLOT_BEGIN_TIME)) %>%
+  filter(year(slot_date) == current_year) %>%
   group_by(slot_year, slot_month) %>%
-  summarise(avail_hour = sum(avail_min, na.rm = T)/60,
-            sched_hour = sum(sched_min, na.rm = T)/60,
-            arrived_hour = sum(arrived_min, na.rm = T)/60) %>%
-  mutate(prov_util = arrived_hour/avail_hour) %>%
+  summarise(avail_hour = sum(REG_AVAIL_MIN, na.rm = T)/60,
+            sched_hour = sum(SCHED_MIN, na.rm = T)/60,
+            arrived_hour = sum(ARRIVED_MIN, na.rm = T)/60) %>%
+  mutate(prov_util = case_when(avail_hour == 0 | is.na(avail_hour) ~ 0, TRUE ~ arrived_hour/avail_hour)) %>%
+  filter(prov_util >=0.35 & prov_util <=2.0) %>%
   collect() %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
@@ -664,23 +654,19 @@ slot_util_dep <- slot_merged %>%
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
-  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, PROV_NM_WID, slot_date) %>%
-  summarise(avail_min = sum(REG_AVAIL_MIN, na.rm = T),
-            sched_min = sum(SCHED_MIN, na.rm = T),
-            arrived_min = sum(ARRIVED_MIN, na.rm = T)) %>%
-  mutate(prov_util = case_when(avail_min == 0 | is.na(avail_min) ~ 0, TRUE ~ arrived_min/avail_min)) %>%
+  mutate(slot_year = year(SLOT_BEGIN_TIME),
+         slot_month = month(SLOT_BEGIN_TIME)) %>%
+  filter(year(slot_date) >= prior_year) %>%
+  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, PROV_NM_WID, PROV_TYPE, slot_year, slot_month) %>%
+  summarise(avail_hour = sum(REG_AVAIL_MIN, na.rm = T)/60,
+            sched_hour = sum(SCHED_MIN, na.rm = T)/60,
+            arrived_hour = sum(ARRIVED_MIN, na.rm = T)/60) %>%
+  mutate(prov_util = case_when(avail_hour == 0 | is.na(avail_hour) ~ 0, TRUE ~ arrived_hour/avail_hour)) %>%
   filter(prov_util >=0.35 & prov_util <=2.0) %>%
-  mutate(slot_year = year(slot_date),
-         slot_month = month(slot_date)) %>%
-  filter(year(slot_date) == prior_year) %>%
-  group_by(slot_year, slot_month) %>%
-  summarise(avail_hour = sum(avail_min, na.rm = T)/60,
-            sched_hour = sum(sched_min, na.rm = T)/60,
-            arrived_hour = sum(arrived_min, na.rm = T)/60) %>%
-  mutate(prov_util = arrived_hour/avail_hour) %>%
   collect() %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
+  
 
 ```
 
@@ -2506,7 +2492,6 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 # Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
 *Report run date: `r report_run_date`*<br/>
 *Excludes templates with provider utilization <35% & >200% per month*<br/>
-*Excludes MSH-Ambulatory Care Templates from Jan-May 2024*<br/>
 ______________________________________________________________________________________________________________________________
 <br/>
 <br/>
@@ -3100,7 +3085,7 @@ reactable(
 
 
     avail_hour = colDef(show =F),
-    sched_hours = colDef(show =F),
+    sched_hour = colDef(show =F),
     arrived_hour = colDef(show =F),
     sched_util = colDef(show =F),
     prov_util = colDef(show =F),
@@ -3786,9 +3771,7 @@ reactable(
 
     Month = colDef(show =F),
     DEPARTMENT_ID = colDef(show =F),
-    sched_hours = colDef(show =F),
-    arrived_hour = colDef(show =F),
-    sched_hours = colDef(show =F),
+    sched_hour = colDef(show =F),
     arrived_hour = colDef(show =F),
     Arrived = colDef(show =F),
     Rescheduled = colDef(show =F),
