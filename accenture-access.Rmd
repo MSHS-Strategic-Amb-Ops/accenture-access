@@ -350,6 +350,8 @@ dep_mapping <- dep_mapping_tbl %>%
 clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
 clarity_ser_2_tbl <- tbl(conn2, "CLARITY_SER_2")
 
+finclass_tbl <- tbl(conn2, "V_PB_EPP_CUSTOM_PRD_TYPE")
+
 
 # Local Connection ---------------------------------------------------
 radiology_dep_mapping_tbl <- tbl(conn1, "RADIOLOGY_DEP_MAPPING")
@@ -359,7 +361,7 @@ clarity_ser_2_tbl_loc <- tbl(conn1, "CLARITY_SER_2")
 
 dep_mapping_tbl_loc <- tbl(conn1, "CLARITY_DEP")
 
-slot_data_tbl <- tbl(conn1, "SLOT_DATA2")
+slot_data_tbl <- tbl(conn1, "SLOT_DATA_2023")
 
 #slot_view_tbl <- tbl(conn3, in_schema("OAO_PRODUCTION", "AMBULATORY_SLOT_TABLE"))
 
@@ -584,6 +586,7 @@ slot_util_mshs_baseline <- slot_merged %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
   group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, PROV_NM_WID, slot_date) %>%
   summarise(avail_min = sum(REG_AVAIL_MIN, na.rm = T),
+            sched_min = sum(SCHED_MIN, na.rm = T),
             arrived_min = sum(ARRIVED_MIN, na.rm = T)) %>%
   mutate(prov_util = case_when(avail_min == 0 | is.na(avail_min) ~ 0, TRUE ~ arrived_min/avail_min)) %>%
   filter(prov_util >=0.35 & prov_util <=2.0) %>%
@@ -592,6 +595,7 @@ slot_util_mshs_baseline <- slot_merged %>%
   filter(year(slot_date) == prior_year) %>%
   group_by(slot_year, slot_month) %>%
   summarise(avail_hour = sum(avail_min, na.rm = T)/60,
+            sched_hour = sum(sched_min, na.rm = T)/60,
             arrived_hour = sum(arrived_min, na.rm = T)/60) %>%
   mutate(prov_util = arrived_hour/avail_hour) %>%
   collect() %>%
@@ -609,14 +613,16 @@ slot_util_mshs_ytd <- slot_merged %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
   group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, PROV_NM_WID, slot_date) %>%
   summarise(avail_min = sum(REG_AVAIL_MIN, na.rm = T),
+            sched_min = sum(SCHED_MIN, na.rm = T),
             arrived_min = sum(ARRIVED_MIN, na.rm = T)) %>%
   mutate(prov_util = case_when(avail_min == 0 | is.na(avail_min) ~ 0, TRUE ~ arrived_min/avail_min)) %>%
   filter(prov_util >=0.35 & prov_util <=2.0) %>%
   mutate(slot_year = year(slot_date),
          slot_month = month(slot_date)) %>%
-  filter(year(slot_date) == current_year) %>%
+  filter(year(slot_date) == prior_year) %>%
   group_by(slot_year, slot_month) %>%
   summarise(avail_hour = sum(avail_min, na.rm = T)/60,
+            sched_hour = sum(sched_min, na.rm = T)/60,
             arrived_hour = sum(arrived_min, na.rm = T)/60) %>%
   mutate(prov_util = arrived_hour/avail_hour) %>%
   collect() %>%
@@ -634,14 +640,16 @@ slot_util_dep <- slot_merged %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, PROV_NM_WID, slot_date) %>%
   summarise(avail_min = sum(REG_AVAIL_MIN, na.rm = T),
+            sched_min = sum(SCHED_MIN, na.rm = T),
             arrived_min = sum(ARRIVED_MIN, na.rm = T)) %>%
   mutate(prov_util = case_when(avail_min == 0 | is.na(avail_min) ~ 0, TRUE ~ arrived_min/avail_min)) %>%
   filter(prov_util >=0.35 & prov_util <=2.0) %>%
   mutate(slot_year = year(slot_date),
          slot_month = month(slot_date)) %>%
-  filter(year(slot_date) >= prior_year) %>%
-  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, slot_year, slot_month) %>%
+  filter(year(slot_date) == prior_year) %>%
+  group_by(slot_year, slot_month) %>%
   summarise(avail_hour = sum(avail_min, na.rm = T)/60,
+            sched_hour = sum(sched_min, na.rm = T)/60,
             arrived_hour = sum(arrived_min, na.rm = T)/60) %>%
   mutate(prov_util = arrived_hour/avail_hour) %>%
   collect() %>%
@@ -1466,6 +1474,9 @@ payer_mix <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   # 
+  left_join(finclass_tbl %>% dplyr::select(PLAN_NAME, PRD_TYPE), 
+            by = c("VISITPLAN" = "PLAN_NAME")) %>%
+  mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -1487,6 +1498,15 @@ payer_mix <- access_raw_tbl %>%
   filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
   filter(appt_status %in% c("Arrived")) %>%
+  mutate(FINCLASS = case_when(FINCLASS %in% c("EXCHANGE") ~ "EXCHANGE",
+                              FINCLASS %in% c("Commercial/Managed Care") ~ "COMMERCIAL_MANAGED_CARE",
+                              FINCLASS %in% c("Medicaid Managed Care") ~ "MCD_HMO",
+                              FINCLASS %in% c("Medicare Managed Care") ~ "MCR_HMO",
+                              FINCLASS %in% c("Medicaid MS") ~ "MCD",
+                              FINCLASS %in% c("Medicare MS") ~ "MCR",
+                              FINCLASS %in% c("Self-pay", "Self Pay MS") ~ "SELF_PAY",
+                              TRUE ~ "OTHER"
+                              )) %>%
   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, new_pt_los, FINCLASS) %>%
   summarise(total = n()) %>%
   collect() 
@@ -1496,6 +1516,9 @@ payer_mix_dep <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   # 
+  left_join(finclass_tbl %>% dplyr::select(PLAN_NAME, PRD_TYPE), 
+            by = c("VISITPLAN" = "PLAN_NAME")) %>%
+  mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -1517,7 +1540,8 @@ payer_mix_dep <- access_raw_tbl %>%
   filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
   filter(appt_status %in% c("Arrived")) %>%
-  mutate(FINCLASS = case_when(FINCLASS %in% c("Commercial/Managed Care") ~ "COMMERCIAL_MANAGED_CARE",
+  mutate(FINCLASS = case_when(FINCLASS %in% c("EXCHANGE") ~ "EXCHANGE",
+                              FINCLASS %in% c("Commercial/Managed Care") ~ "COMMERCIAL_MANAGED_CARE",
                               FINCLASS %in% c("Medicaid Managed Care") ~ "MCD_HMO",
                               FINCLASS %in% c("Medicare Managed Care") ~ "MCR_HMO",
                               FINCLASS %in% c("Medicaid MS") ~ "MCD",
@@ -1536,7 +1560,7 @@ payer_mix_dep <- access_raw_tbl %>%
 
 
 # require(openxlsx)
-# write.xlsx(payer_mix_dep2, "EPIC Payer Mix_070825.xlsx")
+# write.xlsx(payer_mix, "Payer Mix_081525.xlsx")
 ```
 
 
