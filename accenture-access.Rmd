@@ -613,12 +613,17 @@ slot_util_mshs_baseline <- slot_merged_physician %>%
   mutate(slot_year = year(SLOT_BEGIN_TIME),
          slot_month = month(SLOT_BEGIN_TIME)) %>%
   filter(year(slot_date) == prior_year) %>%
-  group_by(slot_year, slot_month) %>%
+  group_by(slot_year, slot_month, DEPARTMENT_ID, PROV_ID) %>%
   summarise(avail_hour = sum(REG_AVAIL_MIN, na.rm = T)/60,
             sched_hour = sum(SCHED_MIN, na.rm = T)/60,
             arrived_hour = sum(ARRIVED_MIN, na.rm = T)/60) %>%
   mutate(prov_util = case_when(avail_hour == 0 | is.na(avail_hour) ~ 0, TRUE ~ arrived_hour/avail_hour)) %>%
   filter(prov_util >=0.35 & prov_util <=2.0) %>%
+  group_by(slot_year, slot_month) %>%
+  summarise(avail_hour = sum(avail_hour, na.rm = T),
+            sched_hour = sum(sched_hour, na.rm = T),
+            arrived_hour = sum(arrived_hour, na.rm = T)) %>%
+  mutate(prov_util = case_when(avail_hour == 0 | is.na(avail_hour) ~ 0, TRUE ~ arrived_hour/avail_hour)) %>%
   collect() %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
@@ -635,12 +640,17 @@ slot_util_mshs_ytd <- slot_merged_physician %>%
   mutate(slot_year = year(SLOT_BEGIN_TIME),
          slot_month = month(SLOT_BEGIN_TIME)) %>%
   filter(year(slot_date) == current_year) %>%
-  group_by(slot_year, slot_month) %>%
+  group_by(slot_year, slot_month, DEPARTMENT_ID, PROV_ID) %>%
   summarise(avail_hour = sum(REG_AVAIL_MIN, na.rm = T)/60,
             sched_hour = sum(SCHED_MIN, na.rm = T)/60,
             arrived_hour = sum(ARRIVED_MIN, na.rm = T)/60) %>%
   mutate(prov_util = case_when(avail_hour == 0 | is.na(avail_hour) ~ 0, TRUE ~ arrived_hour/avail_hour)) %>%
   filter(prov_util >=0.35 & prov_util <=2.0) %>%
+  group_by(slot_year, slot_month) %>%
+  summarise(avail_hour = sum(avail_hour, na.rm = T),
+            sched_hour = sum(sched_hour, na.rm = T),
+            arrived_hour = sum(arrived_hour, na.rm = T)) %>%
+  mutate(prov_util = case_when(avail_hour == 0 | is.na(avail_hour) ~ 0, TRUE ~ arrived_hour/avail_hour)) %>%
   collect() %>%
   rename("Year" = slot_year,
          "Month" = slot_month)
@@ -3246,7 +3256,7 @@ reactable(
 
 ```
 <br/>
-<p style="font-size:10pt; font-style:italic">*Volume, Provider Utilization, and No Show metrics shown on this page are based on physician visits only (PROV_TYPE = "Physician").<p/>
+<p style="font-size:10pt; font-style:italic">*Volume, Provider Utilization, and No Show metrics shown on this page are based on physician visits only (PROV_TYPE = "Physician"); Template Utilization excludes providers with monthly provider utilization <35% or >200%.<p/>
 <p style="font-size:10pt; font-style:italic">**Additional Visits Completed based on sum of monthly total, not YTD calculated.<p/>
 <p style="font-size:10pt; font-style:italic">***Estimated Revenue Impact is calculated based on (2025 - 2024 No Show Plus Rate) X (Arrived + No Show + Late Canceled) X ($110 per Visit); sum of monthly estimated revenue impact, not YTD calculated.<p/><br/>
 <br/>
@@ -3302,7 +3312,7 @@ reactable(
     colGroup(name = "", columns = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME"),
              headerStyle = list(color = "black", fontSize = "15px"),
              sticky = "left"),
-    colGroup(name = paste0("Template Utilization*"),
+    colGroup(name = paste0("Template Utilization"),
              columns = c("avail_hour", "prov_util"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("No Show"),
