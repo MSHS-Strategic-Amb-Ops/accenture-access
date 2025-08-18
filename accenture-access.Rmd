@@ -2051,8 +2051,8 @@ department_merged <- department_merged %>%
          perc_conversion_Both = (scheduled_Both/(non_converted_Both + scheduled_Both)))
 
 
-require(openxlsx)
-write.xlsx(department_merged, "department_merged_081825.xlsx")
+# require(openxlsx)
+# write.xlsx(department_merged, "department_merged_081825.xlsx")
 
 ```
 
