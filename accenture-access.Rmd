@@ -361,7 +361,10 @@ clarity_ser_2_tbl_loc <- tbl(conn1, "CLARITY_SER_2")
 
 dep_mapping_tbl_loc <- tbl(conn1, "CLARITY_DEP")
 
+slot_data_raw_tbl <- tbl(conn1, "ALL_SLOTS_2023")
 slot_data_tbl <- tbl(conn1, "SLOT_DATA_2023")
+slot_data_prc_tbl <- tbl(conn1, "SLOT_DATA_PRC")
+
 
 #slot_view_tbl <- tbl(conn3, in_schema("OAO_PRODUCTION", "AMBULATORY_SLOT_TABLE"))
 
@@ -444,7 +447,7 @@ date_start <- format(Sys.Date(), "%Y-%m-%d")
 # date_start <- paste0(format(Sys.Date(), "%Y-%m"),"-01")
 
 current_year <- format(report_run_date, "%Y")
-prior_year <- as.character(as.numeric(current_year) -1)
+prior_year <- as.character(as.numeric(current_year) -3)
 
 current_month <- format(report_run_date, "%m")
 
@@ -522,6 +525,71 @@ current_year_month <- paste0(current_year,"-",current_month)
 ```
 
 
+```{r}
+
+
+# slot_data_raw <- slot_data_raw_tbl %>%
+#   filter(year(SLOT_BEGIN_TIME) == 2025) %>%
+#   # filter(month(SLOT_BEGIN_TIME) == 1) %>%
+#   filter(DEPARTMENT_ID == "8446406") %>%
+#   filter(PROV_ID == "1449974") %>%
+#   collect()
+# 
+# 
+# slot_data <- slot_data_raw_tbl %>%
+#   filter(is.na(UNAVAILABLE_RSN_C)) %>%
+#   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
+#   filter(year(SLOT_BEGIN_TIME) == 2025) %>%
+#   filter(month(SLOT_BEGIN_TIME) == 1) %>%
+#   # filter(DEPARTMENT_ID == "8823027") %>%
+#   # filter(PROV_ID == "1453594") %>%
+#   group_by(DEPARTMENT_ID, PROV_ID, SLOT_BEGIN_TIME, slot_date, APPT_BLOCK_NAME, APPT_PRC_NAME, SLOT_LENGTH, ORG_REG_OPENINGS) %>%
+#   mutate(ADJ_REG_OPENING = ifelse(NUM_APTS_SCHEDULED == 0, ORG_REG_OPENINGS, ORG_REG_OPENINGS/NUM_APTS_SCHEDULED)) %>%
+#   collect()
+# 
+# 
+# slot_data2 <- slot_data %>%
+#   group_by(DEPARTMENT_ID, PROV_ID, slot_date, SLOT_LENGTH) %>%
+#   summarise(ADJ_REG_OPENING = sum(ADJ_REG_OPENING)) %>%
+#   mutate(ADJ_REG_MIN = SLOT_LENGTH*ADJ_REG_OPENING) %>%
+#   group_by(DEPARTMENT_ID, PROV_ID, slot_date) %>%
+#   summarise(ADJ_REG_MIN = sum(ADJ_REG_MIN)) 
+# 
+# 
+#   # mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
+#   # group_by(slot_date) %>%
+#   # summarise(REG_AVAIL_MIN = sum(REG_AVAIL_MIN, na.rm = T)) %>%
+# 
+# 
+# slot_summary <- slot_data %>%
+#   # filter(!is.na(UNAVAILABLE_RSN_C)) %>%
+#   group_by(DEPARTMENT_ID, PROV_ID, slot_date, SLOT_LENGTH) %>%
+#   summarise(ADJ_REG_OPENING = sum(ADJ_REG_OPENING)) %>%
+#   mutate(ADJ_REG_MIN = SLOT_LENGTH*ADJ_REG_OPENING) %>%
+#   group_by(DEPARTMENT_ID, PROV_ID, slot_date) %>%
+#   summarise(ADJ_REG_MIN = sum(ADJ_REG_MIN))
+# 
+# 
+# 
+# slot <- slot_data_tbl %>%
+#   filter(!is.na(UNAVAIL_MIN)) %>%
+#   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
+#   filter(year(SLOT_BEGIN_TIME) == 2025) %>%
+#   # filter(month(SLOT_BEGIN_TIME) == 1) %>%
+#   # filter(DEPARTMENT_ID == "8823027") %>%
+#   # filter(PROV_ID == "1453594") %>%
+#   group_by(DEPARTMENT_ID, PROV_ID, slot_date) %>%
+#   summarise(REG_AVAIL_MIN = sum(REG_AVAIL_MIN, na.rm = T)) %>%
+#   collect()
+# 
+# merged <- slot %>%
+#   left_join(slot_data) %>%
+#   mutate(match = ifelse(REG_AVAIL_MIN == ADJ_REG_MIN, "Y", "N"))
+
+
+```
+
+
 ```{r Template Utilization Updated, echo = FALSE, warning = FALSE, message = FALSE}
 
 # Grouper 17 Mapping
@@ -550,7 +618,7 @@ grp_mapping <- data.frame("SITE" = c("NETWORK", "OTHER", "MSH-MSDFP", "MSUS",
 
 
 
-slot_merged <- slot_data_tbl %>%
+slot_merged <- slot_data_prc_tbl %>%
   left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
@@ -1496,7 +1564,10 @@ payer_mix <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   # 
-  left_join(finclass_tbl %>% dplyr::select(PLAN_NAME, PRD_TYPE), 
+  left_join(finclass_tbl %>% 
+              filter(PRD_TYPE == "EXCHANGE") %>%
+              dplyr::select(PLAN_NAME, PRD_TYPE) %>%
+              distinct(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   filter(!is.na(SITE)) %>%
@@ -1516,7 +1587,6 @@ payer_mix <- access_raw_tbl %>%
   mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-  
   filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
   filter(appt_status %in% c("Arrived")) %>%
@@ -1538,7 +1608,10 @@ payer_mix_dep <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   # 
-  left_join(finclass_tbl %>% dplyr::select(PLAN_NAME, PRD_TYPE), 
+  left_join(finclass_tbl %>% 
+              filter(PRD_TYPE == "EXCHANGE") %>%
+              dplyr::select(PLAN_NAME, PRD_TYPE) %>%
+              distinct(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   filter(!is.na(SITE)) %>%
@@ -2210,7 +2283,7 @@ department_merged <- merge(department_merged, no_show_dep_physician, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
 department_merged <- merge(department_merged, new_pt_waitTime_dep, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
-# department_merged <- merge(department_merged, payer_mix_dep, all = T)
+#department_merged <- merge(department_merged, payer_mix_dep, all = T)
 department_merged <- merge(department_merged, appt_avail_online_dep, all = T)
 department_merged <- merge(department_merged, referrals_dep, all = T)
 
@@ -2232,8 +2305,8 @@ department_merged <- department_merged %>%
          perc_conversion_Both = (scheduled_Both/(non_converted_Both + scheduled_Both)))
 
 
-# require(openxlsx)
-# write.xlsx(department_merged, "department_merged_080625.xlsx")
+require(openxlsx)
+write.xlsx(department_merged, "department_merged_081825.xlsx")
 
 ```
 
