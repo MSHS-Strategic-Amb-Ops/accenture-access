@@ -361,11 +361,14 @@ clarity_ser_2_tbl_loc <- tbl(conn1, "CLARITY_SER_2")
 
 dep_mapping_tbl_loc <- tbl(conn1, "CLARITY_DEP")
 
-slot_data_raw_tbl <- tbl(conn1, "ALL_SLOTS_2023")
-slot_data_tbl <- tbl(conn1, "SLOT_DATA_2023")
+slot_data_raw_tbl <- tbl(conn1, "ALL_SLOTS")
+slot_data_tbl <- tbl(conn1, "SLOT_DATA")
+slot_data_prc_raw_tbl <- tbl(conn1, "ALL_SLOTS_PRC")
 slot_data_prc_tbl <- tbl(conn1, "SLOT_DATA_PRC")
 
-sched_cnt_tbl <- tbl(conn1, "SCHED_CNT")
+block_raw_tbl_loc <- tbl(conn1, "AVAIL_BLOCK")
+block_name_tbl_loc <- tbl(conn1, "ZC_APPT_BLOCK")
+
 
 #slot_view_tbl <- tbl(conn3, in_schema("OAO_PRODUCTION", "AMBULATORY_SLOT_TABLE"))
 
