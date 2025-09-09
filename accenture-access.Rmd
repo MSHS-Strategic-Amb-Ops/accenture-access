@@ -701,7 +701,7 @@ slot_util_mshs_baseline <- slot_merged_physician %>%
          "Month" = slot_month)
 
 
-slot_util_mshs_ytd <- slot_merged %>%
+slot_util_mshs_ytd <- slot_merged_physician %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
@@ -755,7 +755,7 @@ slot_util_dep <- slot_merged %>%
          "Month" = slot_month)
 
 
-slot_util_prov <- slot_merged %>%
+slot_util_prov <- slot_merged_physician %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
