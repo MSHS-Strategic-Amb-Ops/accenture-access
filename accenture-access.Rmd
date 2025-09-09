@@ -755,7 +755,7 @@ slot_util_dep <- slot_merged %>%
          "Month" = slot_month)
 
 
-slot_util_prov <- slot_merged_physician %>%
+slot_util_prov <- slot_merged %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
