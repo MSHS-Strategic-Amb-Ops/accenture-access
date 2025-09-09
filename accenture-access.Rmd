@@ -821,7 +821,6 @@ no_show_mshs_baseline <- access_raw_tbl %>%
          "Month" = appt_month)
   
   
-  
 
 
 no_show_mshs_ytd <- access_raw_tbl %>%
