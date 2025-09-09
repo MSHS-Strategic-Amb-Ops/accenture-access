@@ -451,7 +451,7 @@ date_start <- format(Sys.Date(), "%Y-%m-%d")
 # date_start <- paste0(format(Sys.Date(), "%Y-%m"),"-01")
 
 current_year <- format(report_run_date, "%Y")
-prior_year <- as.character(as.numeric(current_year) -2)
+prior_year <- as.character(as.numeric(current_year) -1)
 
 current_month <- format(report_run_date, "%m")
 
@@ -648,12 +648,12 @@ slot_merged <- slot_data_prc_tbl %>%
               rename("DEPT_SPECIALTY_NAME" = SPECIALTY)) 
 
 
-slot_merged_physician <- slot_data_tbl %>%
+slot_merged_physician <- slot_data_prc_tbl %>%
   left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
   filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
               dplyr::select(PROV_ID, NPI, GENERIC_YN)) %>%
-  filter(GENERIC_YN == "N") %>%
+  filter(GENERIC_YN == "N" | is.na(GENERIC_YN)) %>%
   left_join(dep_mapping_tbl_loc %>%
               mutate(SITE = case_when(RPT_GRP_SEVNTEEN_C == 2 ~ "NETWORK", 
                                       RPT_GRP_SEVNTEEN_C == 3 ~ "OTHER", 
@@ -684,7 +684,7 @@ slot_util_mshs_baseline <- slot_merged_physician %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
   mutate(slot_year = year(SLOT_BEGIN_TIME),
          slot_month = month(SLOT_BEGIN_TIME)) %>%
-  filter(year(slot_date) == prior_year) %>%
+  filter(slot_year == prior_year) %>%
   group_by(slot_year, slot_month, DEPARTMENT_ID, PROV_ID) %>%
   summarise(avail_hour = sum(REG_AVAIL_MIN, na.rm = T)/60,
             sched_hour = sum(SCHED_MIN, na.rm = T)/60,
@@ -701,7 +701,7 @@ slot_util_mshs_baseline <- slot_merged_physician %>%
          "Month" = slot_month)
 
 
-slot_util_mshs_ytd <- slot_merged_physician %>%
+slot_util_mshs_ytd <- slot_merged %>%
   filter(!is.na(SITE)) %>%
   filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
                      "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
