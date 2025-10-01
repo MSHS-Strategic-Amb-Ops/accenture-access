@@ -2610,7 +2610,7 @@ department_merged <- merge(department_merged, new_pt_waitTime_dep, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
 department_merged <- merge(department_merged, new_pt_waitTime_dep_payer, all = T)
 # department_merged <- merge(department_merged, payer_mix_dep, all = T)
-# department_merged <- merge(department_merged, appt_avail_online_dep, all = T)
+department_merged <- merge(department_merged, appt_avail_online_dep, all = T)
 department_merged <- merge(department_merged, referrals_dep, all = T)
 
 
