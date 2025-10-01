@@ -1902,25 +1902,37 @@ ref_exclude <- c(
 
 ```{r Referrals- Caboodle ReferralsDataView, echo = FALSE, warning = FALSE, message = FALSE}
 
-# cbo_ref <- read_csv(file.choose())
+
+# referral_dashboard <- read_csv(file.choose())
+# referral_dashboard2 <- referral_dashboard %>%
+#   dplyr::select(`Year of ENTRY_DATE`, `Month of ENTRY_DATE`, REFERRAL_ID, SCHED_APPT_FLAG, COMP_APPT_FLAG) 
 # 
-# caboodle_cbo_audit <- cbo_ref %>%
-#   filter(`Year of ENTRY_DATE` == 2024) %>%
-#   dplyr::select(REFERRAL_ID, ORDER_NAME, SCHED_APPT_FLAG, COMP_APPT_FLAG) %>%
-#   mutate(in_Clarity = "Y") %>%
-#   left_join(referrals_merged %>% filter(year(Creation_Date) == 2024) %>%
-#               dplyr::select(ReferralEpicId, sched_flag, comp_flag, ProcedureName, Class, Status, ProcedureName, ReceivedByDept) %>%
-#               mutate(in_Caboodle = "Y") %>%
-#               collect(),
-#             by = c("REFERRAL_ID" = "ReferralEpicId")) 
-#  
-# audit <- caboodle_cbo_audit %>% group_by(in_Clarity, in_Caboodle) %>% summarise(total = n())
+# referral_dashboard_summary <- referral_dashboard2 %>%
+#   group_by(`Year of ENTRY_DATE`, `Month of ENTRY_DATE`) %>% 
+#   summarise(total_scheduled = n_distinct(REFERRAL_ID[SCHED_APPT_FLAG == "YES"]))
 # 
-# missing_caboodle <- caboodle_cbo_audit %>%
-#   filter(is.na(in_Caboodle))
+# audit <- full_join(rfl_visits_merged3, referral_dashboard2,
+#                by = c("ReferralEpicId" = "REFERRAL_ID")) %>%
+#   filter(start_year == 2024 | `Year of ENTRY_DATE` == 2024) %>%
+#   filter(start_month == 1 | `Month of ENTRY_DATE` == "January")
+# 
+# 
+# check <- audit %>% group_by(`Year of ENTRY_DATE`, `Month of ENTRY_DATE`, sched_flag, SCHED_APPT_FLAG) %>% summarise(total_scheduled = n_distinct(ReferralEpicId[SCHED_APPT_FLAG == "YES"]))
+# check2 <- audit %>% group_by(start_year, start_month, `Year of ENTRY_DATE`, `Month of ENTRY_DATE`) %>% summarise(total_scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]))
+# check3 <- rfl_visits_merged %>% group_by(start_year, start_month) %>% summarise(total_scheduled = n_distinct(ReferralEpicId[SCHED_APPT_FLAG == "YES"]))
+# 
 
 
-rfl_visits_linked <- visitFact_conn %>%
+
+
+
+
+
+
+# Updated Referral Conversion Logic --------------------------------------------
+
+## Referrals linked in Visit Fact
+visits_linked <- visitFact_conn %>%
   filter(ReferralKey>0) %>%
   group_by(ReferralKey, EncounterEpicCsn, AppointmentStatus, `_LastUpdatedInstant`) %>% 
   summarise(total = n()) %>%
@@ -1928,45 +1940,59 @@ rfl_visits_linked <- visitFact_conn %>%
   filter(`_LastUpdatedInstant` == max(`_LastUpdatedInstant`, na.rm = TRUE)) %>%
   dplyr::select(ReferralKey, EncounterEpicCsn, AppointmentStatus) %>%
   group_by(ReferralKey) %>%
-  summarise(num_appts_sched = n_distinct(EncounterEpicCsn),
-            num_appts_comp = n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Arrived", "Checked In", "Finalized", "Checked Out")])) %>%
-  mutate(sched_flag = case_when(num_appts_sched > 0 ~ "Y", TRUE ~ "N"),
-         comp_flag = case_when(num_appts_comp >0 ~ "Y", TRUE ~ "N")) 
+  summarise(sched_flag_visit = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Default", "Scheduled", "Finalized", "No Show",
+                                                                                              # "*Not Applicable", "*Deleted",  "*Unknown", "*Unspecified", "Deleted",  "Pending", "Standby", "Hold",
+                                                                                              "Left without seen", "Canceled",
+                                                                                              "Arrived", "Unschedulable", "Checked In",
+                                                                                              "Confirmed", "Checked Out", "Rescheduled")]) >0 ~ 1, TRUE ~ 0),
+            comp_flag_visit = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Arrived", "Checked In", "Checked Out")]) > 0 ~ 1, TRUE ~ 0)) 
+  # collect()
 
 
-referrals_merged <- caboodle_referrals_conn %>%
+
+## Referrals linked in ReferralDataView
+referrals <- caboodle_referrals_conn %>%
+  # left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralKey, ExpirationInstant, InAnyWorkqueue, TriageRejectionReason, SchedulingStatus)) %>%
   filter(!(ProcedureName %in% ref_exclude)) %>%
   filter(ReceivedByDept != "*Unspecified") %>%
   filter(Status != "Denied") %>%
   filter(Class != "Outgoing") %>%
-  dplyr::select(-c("AppointmentCreationDateKey", 
-                   "AppointmentCreationDate",
-                   "AppointmentDateKey",
-                    "AppointmentTimeOfDayKey",
-                    "Appt_Date",
-                    "Appt_Time",
-                    "AppointmentDateTime",
-                    "EncounterEpicCsn",
-                    "Scheduled_in_DeptName",
-                    "Scheduled_in_DeptID",
-                    "AppointmentStatus",
-                    "AppointmentEntryEmployee",
-                    "AppointmentEntryEmployeeName")) %>%
-  distinct() %>%
-  left_join(rfl_visits_linked, 
-            by = c("ReferralKey")) 
+  filter(year(Creation_Date) >= prior_year) %>%
+  mutate(start_year = year(Creation_Date),
+         start_month = month(Creation_Date)) %>%
+  group_by(start_year, start_month, Creation_Date, ReceivedByDept, ReceivedByDepID, ReceivedByProvider, ReceivedByProvNPI, TicketsSentToPatBy_X, ReferralKey, ReferralEpicId
+           # Status, InAnyWorkqueue, ExpirationInstant, TriageRejectionReason, SchedulingStatus
+           ) %>%
+  summarise(sched_flag_rfl = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Default", "Scheduled", "Finalized", "No Show",
+                                                                                              # "*Not Applicable", "*Deleted",  "*Unknown", "*Unspecified", "Deleted",  "Pending", "Standby", "Hold",
+                                                                                              "Left without seen", "Canceled",
+                                                                                              "Arrived", "Unschedulable", "Checked In",
+                                                                                              "Confirmed", "Checked Out", "Rescheduled")]) >0 ~ 1, TRUE ~ 0),
+            comp_flag_rfl = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Arrived", "Checked In", "Checked Out")]) > 0 ~ 1, TRUE ~ 0))
+  # collect()
+
+
+
+referrals_merged <- referrals %>%
+  left_join(visits_linked) %>% 
+  mutate(sched_flag = case_when(sched_flag_rfl == 1 | sched_flag_visit == 1 ~ "Y", TRUE ~ "N"),
+         comp_flag = case_when(comp_flag_rfl == 1 | comp_flag_visit == 1 ~ "Y", TRUE ~ "N"))
+
+
+# referrals_WQ <- referrals_merged %>%
+#   filter(InAnyWorkqueue == 1)
+# require(openxlsx)
+# write.xlsx(referrals_WQ, "Refer-To WQ Volume_093025.xlsx")
 
 
 referrals_mshs_baseline <- referrals_merged %>%
-  filter(year(Creation_Date) == prior_year) %>%
-  mutate(start_year = year(Creation_Date),
-         start_month = month(Creation_Date)) %>%
+  filter(start_year == prior_year) %>%
   group_by(start_year, start_month, TicketsSentToPatBy_X) %>%
-  summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+  summarise(non_converted = n_distinct(ReferralEpicId[sched_flag == "N"]),
             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+  mutate(TicketsSentToPatBy_X = case_when(TicketsSentToPatBy_X=="" ~ "None", TRUE ~ TicketsSentToPatBy_X)) %>%
   collect() %>%
-  mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
   pivot_wider(names_from = TicketsSentToPatBy_X,
               values_from = c("non_converted", "scheduled", "completed"),
               values_fill = 0) %>%
@@ -1989,15 +2015,13 @@ referrals_mshs_baseline <- referrals_merged %>%
 
 
 referrals_mshs_ytd <- referrals_merged %>%
-  filter(year(Creation_Date) == current_year) %>%
-  mutate(start_year = year(Creation_Date),
-         start_month = month(Creation_Date)) %>%
+  filter(start_year == current_year) %>%
   group_by(start_year, start_month, TicketsSentToPatBy_X) %>%
-  summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+  summarise(non_converted = n_distinct(ReferralEpicId[sched_flag == "N"]),
             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+  mutate(TicketsSentToPatBy_X = case_when(TicketsSentToPatBy_X=="" ~ "None", TRUE ~ TicketsSentToPatBy_X)) %>%
   collect() %>%
-  mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
   pivot_wider(names_from = TicketsSentToPatBy_X,
               values_from = c("non_converted", "scheduled", "completed"),
               values_fill = 0) %>%
@@ -2022,14 +2046,12 @@ referrals_mshs_ytd <- referrals_merged %>%
 referrals_dep <- referrals_merged %>%
   filter(year(Creation_Date) >= prior_year) %>%
   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
-  mutate(start_year = year(Creation_Date),
-         start_month = month(Creation_Date)) %>%
   group_by(ReceivedByDept, ReceivedByDepID, start_year, start_month, TicketsSentToPatBy_X) %>%
-  summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+  summarise(non_converted = n_distinct(ReferralEpicId[sched_flag == "N"]),
             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+  mutate(TicketsSentToPatBy_X = case_when(TicketsSentToPatBy_X=="" ~ "None", TRUE ~ TicketsSentToPatBy_X)) %>%
   collect() %>%
-  mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
   pivot_wider(names_from = TicketsSentToPatBy_X,
               values_from = c("non_converted", "scheduled", "completed"),
               values_fill = 0) %>%
@@ -2053,17 +2075,16 @@ referrals_dep <- referrals_merged %>%
          "Month" = start_month)
 
 
+
 referrals_prov <- referrals_merged %>%
   filter(year(Creation_Date) >= prior_year) %>%
   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
-  mutate(start_year = year(Creation_Date),
-         start_month = month(Creation_Date)) %>%
   group_by(ReceivedByDept, ReceivedByDepID, ReceivedByProvider, ReceivedByProvNPI, start_year, start_month, TicketsSentToPatBy_X) %>%
-  summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+  summarise(non_converted = n_distinct(ReferralEpicId[sched_flag == "N"]),
             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+  mutate(TicketsSentToPatBy_X = case_when(TicketsSentToPatBy_X=="" ~ "None", TRUE ~ TicketsSentToPatBy_X)) %>%
   collect() %>%
-  mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
   pivot_wider(names_from = TicketsSentToPatBy_X,
               values_from = c("non_converted", "scheduled", "completed"),
               values_fill = 0) %>%
@@ -2102,6 +2123,202 @@ referrals_prov <- referrals_prov %>%
 
 referrals_prov$ReceivedByProvider <- NULL
 referrals_prov$ReceivedByProvNPI <- NULL
+
+
+
+
+
+
+
+
+
+# # Origial Referral Conversion Code ---------------------------------------------
+# 
+# rfl_visits_linked <- visitFact_conn %>%
+#   filter(ReferralKey>0) %>%
+#   group_by(ReferralKey, EncounterEpicCsn, AppointmentStatus, `_LastUpdatedInstant`) %>% 
+#   summarise(total = n()) %>%
+#   collect()
+#   group_by(EncounterEpicCsn) %>%
+#   filter(`_LastUpdatedInstant` == max(`_LastUpdatedInstant`, na.rm = TRUE)) %>%
+#   dplyr::select(ReferralKey, EncounterEpicCsn, AppointmentStatus) %>%
+#   group_by(ReferralKey) %>%
+#   summarise(num_appts_sched = n_distinct(EncounterEpicCsn),
+#             num_appts_comp = n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Arrived", "Checked In", "Finalized", "Checked Out")])) %>%
+#   mutate(sched_flag = case_when(num_appts_sched > 0 ~ "Y", TRUE ~ "N"),
+#          comp_flag = case_when(num_appts_comp >0 ~ "Y", TRUE ~ "N")) %>%
+#   collect()
+# 
+# 
+# referrals_merged <- caboodle_referrals_conn %>%
+#   filter(!(ProcedureName %in% ref_exclude)) %>%
+#   filter(ReceivedByDept != "*Unspecified") %>%
+#   filter(Status != "Denied") %>%
+#   filter(Class != "Outgoing") %>%
+#   dplyr::select(-c("AppointmentCreationDateKey", 
+#                    "AppointmentCreationDate",
+#                    "AppointmentDateKey",
+#                     "AppointmentTimeOfDayKey",
+#                     "Appt_Date",
+#                     "Appt_Time",
+#                     "AppointmentDateTime",
+#                     "EncounterEpicCsn",
+#                     "Scheduled_in_DeptName",
+#                     "Scheduled_in_DeptID",
+#                     "AppointmentStatus",
+#                     "AppointmentEntryEmployee",
+#                     "AppointmentEntryEmployeeName")) %>%
+#   distinct() %>%
+#   left_join(rfl_visits_linked, 
+#             by = c("ReferralKey")) %>%
+#   collect()
+# 
+# 
+# referrals_mshs_baseline <- referrals_merged %>%
+#   filter(year(Creation_Date) == prior_year) %>%
+#   mutate(start_year = year(Creation_Date),
+#          start_month = month(Creation_Date)) %>%
+#   group_by(start_year, start_month, TicketsSentToPatBy_X) %>%
+#   summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+#             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
+#             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+#   collect() %>%
+#   mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
+#   pivot_wider(names_from = TicketsSentToPatBy_X,
+#               values_from = c("non_converted", "scheduled", "completed"),
+#               values_fill = 0) %>%
+#   rowwise() %>% 
+#   mutate(total_referrals = sum(c_across(contains("non_converted") | contains("scheduled"))),
+#          total_scheduled = sum(c_across(contains("scheduled"))),
+#          total_completed = sum(c_across(contains("completed"))),
+#          total_tkt_sent_scheduler = sum(c_across(contains("converted_scheduler") | contains("scheduled_scheduler"))),
+#          total_tkt_sent_automated = sum(c_across(contains("converted_Automated") | contains("scheduled_Automated"))),
+#          total_tkt_sent_both = sum(c_across(contains("converted_both") | contains("scheduled_both"))),
+#          total_tkt_sent = sum(total_tkt_sent_scheduler, total_tkt_sent_automated, total_tkt_sent_both)) %>%
+#   mutate(perc_conversion = total_scheduled/total_referrals,
+#          perc_completion = total_completed/total_referrals,
+#          perc_tkt_sent = total_tkt_sent/total_referrals,
+#          perc_tkt_sent_automated = total_tkt_sent_automated/total_referrals,
+#          perc_tkt_sent_scheduler = total_tkt_sent_scheduler/total_referrals,
+#          perc_tkt_sent_both = total_tkt_sent_both/total_referrals) %>%
+#   rename("Year" = start_year,
+#          "Month" = start_month)
+# 
+# 
+# referrals_mshs_ytd <- referrals_merged %>%
+#   filter(year(Creation_Date) == current_year) %>%
+#   mutate(start_year = year(Creation_Date),
+#          start_month = month(Creation_Date)) %>%
+#   group_by(start_year, start_month, TicketsSentToPatBy_X) %>%
+#   summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+#             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
+#             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+#   collect() %>%
+#   mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
+#   pivot_wider(names_from = TicketsSentToPatBy_X,
+#               values_from = c("non_converted", "scheduled", "completed"),
+#               values_fill = 0) %>%
+#   rowwise() %>% 
+#   mutate(total_referrals = sum(c_across(contains("non_converted") | contains("scheduled"))),
+#          total_scheduled = sum(c_across(contains("scheduled"))),
+#          total_completed = sum(c_across(contains("completed"))),
+#          total_tkt_sent_scheduler = sum(c_across(contains("converted_scheduler") | contains("scheduled_scheduler"))),
+#          total_tkt_sent_automated = sum(c_across(contains("converted_Automated") | contains("scheduled_Automated"))),
+#          total_tkt_sent_both = sum(c_across(contains("converted_both") | contains("scheduled_both"))),
+#          total_tkt_sent = sum(total_tkt_sent_scheduler, total_tkt_sent_automated, total_tkt_sent_both)) %>%
+#   mutate(perc_conversion = total_scheduled/total_referrals,
+#          perc_completion = total_completed/total_referrals,
+#          perc_tkt_sent = total_tkt_sent/total_referrals,
+#          perc_tkt_sent_automated = total_tkt_sent_automated/total_referrals,
+#          perc_tkt_sent_scheduler = total_tkt_sent_scheduler/total_referrals,
+#          perc_tkt_sent_both = total_tkt_sent_both/total_referrals) %>%
+#   rename("Year" = start_year,
+#          "Month" = start_month)
+# 
+# 
+# referrals_dep <- referrals_merged %>%
+#   filter(year(Creation_Date) >= prior_year) %>%
+#   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
+#   mutate(start_year = year(Creation_Date),
+#          start_month = month(Creation_Date)) %>%
+#   group_by(ReceivedByDept, ReceivedByDepID, start_year, start_month, TicketsSentToPatBy_X) %>%
+#   summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+#             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
+#             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+#   collect() %>%
+#   mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
+#   pivot_wider(names_from = TicketsSentToPatBy_X,
+#               values_from = c("non_converted", "scheduled", "completed"),
+#               values_fill = 0) %>%
+#   rowwise() %>% 
+#   mutate(total_referrals = sum(c_across(contains("non_converted") | contains("scheduled"))),
+#          total_scheduled = sum(c_across(contains("scheduled"))),
+#          total_completed = sum(c_across(contains("completed"))),
+#          total_tkt_sent_scheduler = sum(c_across(contains("converted_scheduler") | contains("scheduled_scheduler"))),
+#          total_tkt_sent_automated = sum(c_across(contains("converted_Automated") | contains("scheduled_Automated"))),
+#          total_tkt_sent_both = sum(c_across(contains("converted_both") | contains("scheduled_both"))),
+#          total_tkt_sent = sum(total_tkt_sent_scheduler, total_tkt_sent_automated, total_tkt_sent_both)) %>%
+#   mutate(perc_conversion = total_scheduled/total_referrals,
+#          perc_completion = total_completed/total_referrals,
+#          perc_tkt_sent = total_tkt_sent/total_referrals,
+#          perc_tkt_sent_automated = total_tkt_sent_automated/total_referrals,
+#          perc_tkt_sent_scheduler = total_tkt_sent_scheduler/total_referrals,
+#          perc_tkt_sent_both = total_tkt_sent_both/total_referrals) %>%
+#   rename("DEPARTMENT_NAME" =  ReceivedByDept,
+#          "DEPARTMENT_ID" = ReceivedByDepID,
+#          "Year" = start_year,
+#          "Month" = start_month)
+# 
+# 
+# referrals_prov <- referrals_merged %>%
+#   filter(year(Creation_Date) >= prior_year) %>%
+#   filter(as.Date(Creation_Date) < as.Date(date_start)) %>%
+#   mutate(start_year = year(Creation_Date),
+#          start_month = month(Creation_Date)) %>%
+#   group_by(ReceivedByDept, ReceivedByDepID, ReceivedByProvider, ReceivedByProvNPI, start_year, start_month, TicketsSentToPatBy_X) %>%
+#   summarise(non_converted = n_distinct(ReferralEpicId[is.na(sched_flag)]),
+#             scheduled = n_distinct(ReferralEpicId[sched_flag == "Y"]),
+#             completed = n_distinct(ReferralEpicId[comp_flag == "Y"])) %>%
+#   collect() %>%
+#   mutate(TicketsSentToPatBy_X = ifelse(TicketsSentToPatBy_X=="", "None", TicketsSentToPatBy_X)) %>%
+#   pivot_wider(names_from = TicketsSentToPatBy_X,
+#               values_from = c("non_converted", "scheduled", "completed"),
+#               values_fill = 0) %>%
+#   rowwise() %>% 
+#   mutate(total_referrals = sum(c_across(contains("non_converted") | contains("scheduled"))),
+#          total_scheduled = sum(c_across(contains("scheduled"))),
+#          total_completed = sum(c_across(contains("completed"))),
+#          total_tkt_sent_scheduler = sum(c_across(contains("converted_scheduler") | contains("scheduled_scheduler"))),
+#          total_tkt_sent_automated = sum(c_across(contains("converted_Automated") | contains("scheduled_Automated"))),
+#          total_tkt_sent_both = sum(c_across(contains("converted_both") | contains("scheduled_both"))),
+#          total_tkt_sent = sum(total_tkt_sent_scheduler, total_tkt_sent_automated, total_tkt_sent_both)) %>%
+#   mutate(perc_conversion = total_scheduled/total_referrals,
+#          perc_completion = total_completed/total_referrals,
+#          perc_tkt_sent = total_tkt_sent/total_referrals,
+#          perc_tkt_sent_automated = total_tkt_sent_automated/total_referrals,
+#          perc_tkt_sent_scheduler = total_tkt_sent_scheduler/total_referrals,
+#          perc_tkt_sent_both = total_tkt_sent_both/total_referrals) %>%
+#   rename("DEPARTMENT_NAME" =  ReceivedByDept,
+#          "DEPARTMENT_ID" = ReceivedByDepID,
+#          "Year" = start_year,
+#          "Month" = start_month)
+# 
+# 
+# referrals_prov <- referrals_prov %>%
+#   left_join(clarity_ser_2_tbl %>% 
+#               dplyr::select(PROV_ID, NPI) %>%
+#               collect(),
+#             by = c("ReceivedByProvNPI" = "NPI")) %>% 
+#   left_join(clarity_ser_tbl %>% 
+#               select(PROV_ID, PROV_TYPE) %>% 
+#               collect(),
+#             by = c("PROV_ID")) %>%
+#   left_join(clarity_ser_2_tbl %>% 
+#               dplyr::select(PROV_ID, NPI) %>%
+#               collect())
+# 
+# referrals_prov$ReceivedByProvider <- NULL
+# referrals_prov$ReceivedByProvNPI <- NULL
 
 # require(openxlsx)
 # write.xlsx(referrals_prov, "Referrals by Provider.xlsx")
@@ -2369,9 +2586,9 @@ department_merged <- merge(department_merged, no_show_dep_physician, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
 department_merged <- merge(department_merged, new_pt_waitTime_dep, all = T)
 department_merged <- merge(department_merged, new_pt_ratio_dep, all = T)
-# department_merged <- merge(department_merged, new_pt_waitTime_dep_payer, all = T)
+department_merged <- merge(department_merged, new_pt_waitTime_dep_payer, all = T)
 # department_merged <- merge(department_merged, payer_mix_dep, all = T)
-department_merged <- merge(department_merged, appt_avail_online_dep, all = T)
+# department_merged <- merge(department_merged, appt_avail_online_dep, all = T)
 department_merged <- merge(department_merged, referrals_dep, all = T)
 
 
@@ -2402,7 +2619,7 @@ department_merged <- department_merged %>%
 ```{r Provider Data Merged}
 
 prov_merged <- merge(slot_util_prov, no_show_prov, all = T)
-prov_merged <- merge(prov_merged, no_show_prov_physician, all = T)
+# prov_merged <- merge(prov_merged, no_show_prov_physician, all = T)
 prov_merged <- merge(prov_merged, new_pt_ratio_prov, all = T)
 prov_merged <- merge(prov_merged, new_pt_waitTime_prov, all = T)
 prov_merged <- merge(prov_merged, new_pt_ratio_prov, all = T)
@@ -2428,9 +2645,9 @@ prov_merged <- prov_merged %>%
 #          perc_conversion_Scheduler = (scheduled_Scheduler/(non_converted_Scheduler + scheduled_Scheduler)),
 #          perc_conversion_Both = (scheduled_Both/(non_converted_Both + scheduled_Both)))
 
-
+# 
 # require(openxlsx)
-# write.xlsx(prov_merged, "prov_merged_081925.xlsx")
+# write.xlsx(prov_merged, "prov_merged_093025.xlsx")
 
 ```
 
