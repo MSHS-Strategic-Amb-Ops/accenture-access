@@ -1930,9 +1930,15 @@ ref_exclude <- c(
 
 
 
-
-
-
+# check <- visitFact_conn %>%
+#   filter(EncounterEpicCsn == "100189690940") %>%
+#   collect()
+# 
+# referral_fact <- caboodle_referralFact_conn %>%
+#   head(10) %>%
+#   collect()
+# 
+# 
 
 
 # Updated Referral Conversion Logic --------------------------------------------
@@ -1942,8 +1948,6 @@ visits_linked <- visitFact_conn %>%
   filter(ReferralKey>0) %>%
   group_by(ReferralKey, EncounterEpicCsn, AppointmentStatus, `_LastUpdatedInstant`) %>% 
   summarise(total = n()) %>%
-  group_by(EncounterEpicCsn) %>%
-  filter(`_LastUpdatedInstant` == max(`_LastUpdatedInstant`, na.rm = TRUE)) %>%
   dplyr::select(ReferralKey, EncounterEpicCsn, AppointmentStatus) %>%
   group_by(ReferralKey) %>%
   summarise(sched_flag_visit = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Default", "Scheduled", "Finalized", "No Show",
@@ -1951,7 +1955,7 @@ visits_linked <- visitFact_conn %>%
                                                                                               "Left without seen", "Canceled",
                                                                                               "Arrived", "Unschedulable", "Checked In",
                                                                                               "Confirmed", "Checked Out", "Rescheduled")]) >0 ~ 1, TRUE ~ 0),
-            comp_flag_visit = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Arrived", "Checked In", "Checked Out")]) > 0 ~ 1, TRUE ~ 0)) 
+            comp_flag_visit = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Arrived", "Checked In", "Checked Out")]) > 0 ~ 1, TRUE ~ 0))
   # collect()
 
 
@@ -1982,7 +1986,8 @@ referrals <- caboodle_referrals_conn %>%
 referrals_merged <- referrals %>%
   left_join(visits_linked) %>% 
   mutate(sched_flag = case_when(sched_flag_rfl == 1 | sched_flag_visit == 1 ~ "Y", TRUE ~ "N"),
-         comp_flag = case_when(comp_flag_rfl == 1 | comp_flag_visit == 1 ~ "Y", TRUE ~ "N"))
+         comp_flag = case_when(comp_flag_rfl == 1 | comp_flag_visit == 1 ~ "Y", TRUE ~ "N")) 
+  # collect()
 
 
 # referrals_WQ <- referrals_merged %>%
@@ -2946,12 +2951,12 @@ ________________________________________________________________________________
 ```{r Accenture Workstream ROI, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-# htmltools::browsable(
-#   tagList(
-#     tags$button(
-#       tagList(fontawesome::fa("download"), "Download Table"),
-#       onclick = "Reactable.downloadDataCSV('new-pt-waitTime', 'New Patient Wait Time')"
-#     ),
+htmltools::browsable(
+  tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('access-roid', 'Access Metrics ROI')"
+    ),
 
 # htmltools::browsable(
 #   tagList(
@@ -3686,8 +3691,8 @@ reactable(
   ) # Close Columns
 
   ) # Close Reactable
-# ) # Close Taglist
-# ) # Close htmltools
+) # Close Taglist
+) # Close htmltools
 
 ```
 <br/>
