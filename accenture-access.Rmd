@@ -3705,25 +3705,25 @@ reactable(
 ```{r New Patients Scheduled within 14 Days Output, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-# htmltools::browsable(
-#   tagList(
-#     tags$button(
-#       tagList(fontawesome::fa("download"), "Download Table"),
-#       onclick = "Reactable.downloadDataCSV('new-pt-waitTime', 'New Patient Wait Time')"
-#     ),
-
 htmltools::browsable(
   tagList(
-    div(tags$label("Summary by", `for` = "access-metrics")),
-    tags$select(
-      id = "new-pt-waitTime",
-      onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
-      tags$option("None", value = ""),
-      lapply(c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty"), tags$option)
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('access-metrics', 'Metrics by Department')"
     ),
 
-    tags$hr("aria-hidden" = "true"),
-    
+# htmltools::browsable(
+#   tagList(
+#     div(tags$label("Summary by", `for` = "access-metrics")),
+#     tags$select(
+#       id = "new-pt-waitTime",
+#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
+#       tags$option("None", value = ""),
+#       lapply(c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty"), tags$option)
+#     ),
+# 
+#     tags$hr("aria-hidden" = "true"),
+#     
 reactable(
   department_merged, 
   elementId = "access-metrics",
