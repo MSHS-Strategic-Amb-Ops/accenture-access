@@ -389,7 +389,6 @@ clarity_referrals_tbl <- tbl(conn5, dbplyr::ident_q('"Clarity"."REFERRAL"'))
 visitFact_conn <- tbl(conn5, dbplyr::ident_q('"Caboodle"."VisitFact"'))
 
 
-
 clarity_ser <- clarity_ser_tbl %>% head(10) %>% collect()
 clarity_ser_2 <- clarity_ser_2_tbl %>% head(10) %>% collect()
 
@@ -787,7 +786,8 @@ slot_util_prov <- slot_merged %>%
 
 ```{r No Show, echo = FALSE, warning = FALSE, message = FALSE}
 
-no_show_mshs_baseline <- access_raw_tbl %>%
+
+no_show_mshs_baseline_current <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   
@@ -803,7 +803,49 @@ no_show_mshs_baseline <- access_raw_tbl %>%
   filter(DERIVED_STATUS_DESC == "Arrived" | 
            DERIVED_STATUS_DESC == "No Show" |
            (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
-           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
+           (DERIVED_STATUS_DESC == "Rescheduled" &  CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE)) %>%
+  mutate(appt_made_year = year(APPT_MADE_DATE),
+         appt_made_month = month(APPT_MADE_DATE)) %>%
+  mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
+  mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+  filter(year(CONTACT_DATE) == prior_year) %>%
+  filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
+  group_by(appt_year, appt_month, DERIVED_STATUS_DESC) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
+         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
+         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
+  rename("No_Show" = `No Show`,
+         "Year" = appt_year,
+         "Month" = appt_month)
+
+
+
+
+no_show_mshs_baseline_current <- access_raw_tbl %>%
+  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+  # filter(PROV_TYPE == "Physician") %>%
+  
+  filter(!is.na(SITE)) %>%
+  filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
+                     "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
+  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
+  # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
+  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
+                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" &  CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   mutate(appt_made_year = year(APPT_MADE_DATE),
@@ -1444,10 +1486,10 @@ new_pt_waitTime_prov <- access_raw_tbl %>%
 new_pt_waitTime_dep_payer <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
-  left_join(finclass_tbl %>% 
+  left_join(check <- finclass_tbl %>% 
               filter(PRD_TYPE == "EXCHANGE") %>%
               dplyr::select(PLAN_NAME, PRD_TYPE) %>%
-              distinct(), 
+              distinct() %>% collect(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   
@@ -1899,7 +1941,10 @@ ref_exclude <- c(
   "MS AMB REF TO MIDI (EXTERNAL)",
   "MSSN SURGICAL BOOKING ORDER",
   "PHX REFERRAL TO LUNG TRANSPLANT",
-  "REFERRAL NUCLEAR STRESS TEST"
+  "REFERRAL NUCLEAR STRESS TEST",
+  "AMB REF TO GMA SOCIAL WORK",
+  "AMB REF TO PAIN MANAGEMENT",
+  "AMB REF TO SW MENTAL HEALTH"
 
 )
 
@@ -1958,20 +2003,36 @@ visits_linked <- visitFact_conn %>%
             comp_flag_visit = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Arrived", "Checked In", "Checked Out")]) > 0 ~ 1, TRUE ~ 0))
   # collect()
 
+# 
+# referral_fact <- caboodle_referralFact_conn %>%
+#   head(10) %>%
+#   # group_by(Status, PendingReason) %>%
+#   # summarise(total = n_distinct(ReferralKey)) %>%
+#   collect()
+
+# check <- caboodle_referrals_conn %>%
+#   left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralKey, ExpirationInstant, InAnyWorkqueue, TriageRejectionReason, SchedulingStatus, PendingReason)) %>%
+#   group_by(Status, PendingReason) %>%
+#   summarise(total = n_distinct(ReferralKey)) %>%
+#   collect()
+
 
 
 ## Referrals linked in ReferralDataView
 referrals <- caboodle_referrals_conn %>%
-  # left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralKey, ExpirationInstant, InAnyWorkqueue, TriageRejectionReason, SchedulingStatus)) %>%
+  left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralKey, ExpirationInstant, InAnyWorkqueue, TriageRejectionReason, SchedulingStatus)) %>%
+  left_join(caboodle_referralFact_conn %>% dplyr::select(ReferralKey, PendingReason)) %>%
   filter(!(ProcedureName %in% ref_exclude)) %>%
   filter(ReceivedByDept != "*Unspecified") %>%
   filter(Status != "Denied") %>%
   filter(Class != "Outgoing") %>%
+  filter(PendingReason != "Exclude from Physician to Physician Referral Reporting") %>%
   filter(year(Creation_Date) >= prior_year) %>%
   mutate(start_year = year(Creation_Date),
          start_month = month(Creation_Date)) %>%
-  group_by(start_year, start_month, Creation_Date, ReceivedByDept, ReceivedByDepID, ReceivedByProvider, ReceivedByProvNPI, TicketsSentToPatBy_X, ReferralKey, ReferralEpicId
-           # Status, InAnyWorkqueue, ExpirationInstant, TriageRejectionReason, SchedulingStatus
+  group_by(start_year, start_month, Creation_Date, ReceivedByDept, ReceivedByDepID, ReceivedByProvider, ReceivedByProvNPI, TicketsSentToPatBy_X, ReferralKey, ReferralEpicId, 
+           ProcedureName, ICD_10_Chosen,
+           Status, InAnyWorkqueue, ExpirationInstant, TriageRejectionReason, SchedulingStatus
            ) %>%
   summarise(sched_flag_rfl = case_when(n_distinct(EncounterEpicCsn[AppointmentStatus %in% c("Completed", "Default", "Scheduled", "Finalized", "No Show",
                                                                                               # "*Not Applicable", "*Deleted",  "*Unknown", "*Unspecified", "Deleted",  "Pending", "Standby", "Hold",
@@ -1986,14 +2047,14 @@ referrals <- caboodle_referrals_conn %>%
 referrals_merged <- referrals %>%
   left_join(visits_linked) %>% 
   mutate(sched_flag = case_when(sched_flag_rfl == 1 | sched_flag_visit == 1 ~ "Y", TRUE ~ "N"),
-         comp_flag = case_when(comp_flag_rfl == 1 | comp_flag_visit == 1 ~ "Y", TRUE ~ "N")) 
-  # collect()
+         comp_flag = case_when(comp_flag_rfl == 1 | comp_flag_visit == 1 ~ "Y", TRUE ~ "N")) %>%
+  collect()
 
 
-# referrals_WQ <- referrals_merged %>%
-#   filter(InAnyWorkqueue == 1)
-# require(openxlsx)
-# write.xlsx(referrals_WQ, "Refer-To WQ Volume_093025.xlsx")
+referrals_WQ <- referrals_merged %>%
+  filter(InAnyWorkqueue == 1)
+require(openxlsx)
+write.xlsx(referrals_WQ, "Refer-To WQ Volume_100625.xlsx")
 
 
 referrals_mshs_baseline <- referrals_merged %>%
@@ -2951,12 +3012,12 @@ ________________________________________________________________________________
 ```{r Accenture Workstream ROI, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-htmltools::browsable(
-  tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download Table"),
-      onclick = "Reactable.downloadDataCSV('access-roid', 'Access Metrics ROI')"
-    ),
+# htmltools::browsable(
+#   tagList(
+#     tags$button(
+#       tagList(fontawesome::fa("download"), "Download Table"),
+#       onclick = "Reactable.downloadDataCSV('access-roid', 'Access Metrics ROI')"
+#     ),
 
 # htmltools::browsable(
 #   tagList(
@@ -3691,8 +3752,8 @@ reactable(
   ) # Close Columns
 
   ) # Close Reactable
-) # Close Taglist
-) # Close htmltools
+# ) # Close Taglist
+# ) # Close htmltools
 
 ```
 <br/>
