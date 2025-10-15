@@ -1486,10 +1486,10 @@ new_pt_waitTime_prov <- access_raw_tbl %>%
 new_pt_waitTime_dep_payer <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
-  left_join(check <- finclass_tbl %>% 
+  left_join(finclass_tbl %>% 
               filter(PRD_TYPE == "EXCHANGE") %>%
               dplyr::select(PLAN_NAME, PRD_TYPE) %>%
-              distinct() %>% collect(), 
+              distinct(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   
