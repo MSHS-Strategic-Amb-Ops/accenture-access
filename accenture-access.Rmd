@@ -787,7 +787,7 @@ slot_util_prov <- slot_merged %>%
 ```{r No Show, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-no_show_mshs_baseline_current <- access_raw_tbl %>%
+no_show_mshs_baseline <- access_raw_tbl %>%
   # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   
@@ -825,50 +825,6 @@ no_show_mshs_baseline_current <- access_raw_tbl %>%
   rename("No_Show" = `No Show`,
          "Year" = appt_year,
          "Month" = appt_month)
-
-
-
-
-no_show_mshs_baseline_current <- access_raw_tbl %>%
-  # left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
-  # filter(PROV_TYPE == "Physician") %>%
-  
-  filter(!is.na(SITE)) %>%
-  filter(SITE %in% c("MSUS", "MSH- AMBULATORY CARE", "NETWORK", "MSW", "MSH-MSDFP", 
-                     "MSDMG", "MSB", "MSM", "MSQ", "MSBI", "MSSN", "NYEE")) %>%
-  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
-  # mutate(lead_days =  as.numeric(difftime(as.Date(APPT_MADE_DATE), as.Date(CONTACT_DATE), units = "days"))) %>%
-  mutate(SPECIALTY_GRP = ifelse(DEPT_SPECIALTY_NAME %in% 
-                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
-                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-  filter(DERIVED_STATUS_DESC == "Arrived" | 
-           DERIVED_STATUS_DESC == "No Show" |
-           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
-           (DERIVED_STATUS_DESC == "Rescheduled" &  CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
-  mutate(appt_year = year(CONTACT_DATE),
-         appt_month = month(CONTACT_DATE)) %>%
-  mutate(appt_made_year = year(APPT_MADE_DATE),
-         appt_made_month = month(APPT_MADE_DATE)) %>%
-  mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
-  mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
-  filter(year(CONTACT_DATE) == prior_year) %>%
-  filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  # dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PAT_ENC_CSN_ID, APPT_STATUS_NAME, CANCEL_LEAD_HOURS, CANCEL_INITIATOR) %>%
-  group_by(appt_year, appt_month, DERIVED_STATUS_DESC) %>%
-  summarise(total = n()) %>%
-  collect() %>%
-  pivot_wider(names_from = DERIVED_STATUS_DESC,
-              values_from = total,
-              values_fill = 0) %>%
-  mutate(perc_noShowPlusPlus = (`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled),
-         perc_noShowPlus = (`No Show` + Canceled)/(Arrived + `No Show` + Canceled),
-         perc_noShow = (`No Show`)/(Arrived + `No Show`)) %>%
-  rename("No_Show" = `No Show`,
-         "Year" = appt_year,
-         "Month" = appt_month)
-  
-  
 
 
 no_show_mshs_ytd <- access_raw_tbl %>%
