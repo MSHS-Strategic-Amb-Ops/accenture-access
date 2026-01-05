@@ -1223,7 +1223,7 @@ new_pt_ratio_dep <- access_raw_tbl %>%
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
-  filter(year(CONTACT_DATE) == current_year) %>%
+  filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
   filter(DERIVED_STATUS_DESC %in% c("Arrived")) %>%
   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, new_pt_los) %>%
@@ -1381,7 +1381,7 @@ new_pt_ratio_dep_physician <- access_raw_tbl %>%
                                   c("Adolescent Medicine", "Community and Preventive Medicine", 
                                     "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
   
-  filter(year(CONTACT_DATE) == current_year) %>%
+  filter(year(CONTACT_DATE) >= prior_year) %>%
   filter(CONTACT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
   filter(DERIVED_STATUS_DESC %in% c("Arrived")) %>%
   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, appt_year, appt_month, new_pt_los) %>%
