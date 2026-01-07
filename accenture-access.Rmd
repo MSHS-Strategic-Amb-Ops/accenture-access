@@ -398,6 +398,23 @@ visitFact_conn <- tbl(conn5, dbplyr::ident_q('"Caboodle"."VisitFact"'))
 ```{r}
 
 
+# availability <- availability_raw_tbl %>%
+#   filter(year(SLOT_BEGIN_TIME) == "2026") %>%
+#   filter(month(SLOT_BEGIN_TIME) == 1) %>%
+#   filter(DEPARTMENT_ID == "8346004") %>%
+#   filter(PROV_ID == "1321314") %>%
+#   left_join(access_raw_tbl %>%
+#               dplyr::select(APPT_STATUS_NAME, DERIVED_STATUS_DESC, PAT_ENC_CSN_ID)) %>%
+#   collect()
+# 
+# 
+# check <- slot_data_tbl %>%
+#   filter(year(SLOT_BEGIN_TIME) == "2026") %>%
+#   filter(month(SLOT_BEGIN_TIME) == 1) %>%
+#   filter(DEPARTMENT_ID == "8346004") %>%
+#   filter(PROV_ID == "1321314") %>%
+#   collect()
+
 # fpax_tbl <- tbl(conn1, "FPAX_MERGED_DETAIL")
 # fpax <- fpax_tbl %>%
 #   group_by(EPIC_ENCOUNTER_CSN) %>%
@@ -626,7 +643,7 @@ grp_mapping <- data.frame("SITE" = c("NETWORK", "OTHER", "MSH-MSDFP", "MSUS",
 
 
 
-slot_merged <- slot_data_prc_tbl %>%
+slot_merged <- slot_data_tbl %>%
   left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
@@ -678,13 +695,8 @@ slot_merged <- slot_data_prc_tbl %>%
 #   filter(avail_hour >0) %>%
 #   relocate(day_duration, .before = "session")
 
-           
-         
 
-
-
-
-slot_merged_physician <- slot_data_prc_tbl %>%
+slot_merged_physician <- slot_data_tbl %>%
   left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
   filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
