@@ -643,7 +643,7 @@ grp_mapping <- data.frame("SITE" = c("NETWORK", "OTHER", "MSH-MSDFP", "MSUS",
 
 
 
-slot_merged <- slot_data_tbl %>%
+slot_merged <- slot_data_prc_tbl %>%
   left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
@@ -3051,12 +3051,12 @@ prov_merged <- prov_merged %>%
 access_target <- data.frame(
   Year = c(2024, 2025, 2026),
   prov_util_target = c(0.85, 0.85, 0.85),
-  perc_noShowPlus_target = c(0.10, 0.10, 0.10),
+  perc_noShowPlus_target = c(0.12, 0.12, 0.115),
   # new_los_target = c(25, 25, 25),
   # est_los_target = c(75, 75, 75),
   perc_new_pt_target = c(0.25, 0.25, 0.25),
   perc_conversion_target = c(0.61, 0.62, 0.63),
-  ref_converted_target = c(26000, 26000, 26000)
+  ref_converted_target = c(26000, 26000, 28000)
 )
 
 
